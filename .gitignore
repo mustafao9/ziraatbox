@@ -1,0 +1,15 @@
+# Hassas Çevre ve Yapılandırma Dosyaları
+.env
+.env.*
+!.env.example
+
+# Yüklenen Kullanıcı Dosyaları ve Medyalar
+uploads/
+public_html/uploads/
+
+# IDE, Sistem ve Editör Dosyaları
+.idea/
+.vscode/
+*.swp
+*.DS_Store
+*.log
