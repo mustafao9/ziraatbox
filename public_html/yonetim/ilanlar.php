@@ -1,56 +1,111 @@
-<?php 
-require_once "../sistem/ayar.php"; 
+<?php
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
-if(!isset($_SESSION['admin_id']) || $_SESSION['yetki'] != 'admin'){
-    header("Location: giris.php"); exit;
+require_once "../sistem/ayar.php";
+
+if (!isset($_SESSION['admin_id']) OR$_SESSION['yetki'] != 'admin') {
+    header("Location: giris.php");
+    exit;
 }
 
 // 1. ADIM: İŞLEMLER VE FİLTRE KONTROLÜ
-$filtre   = isset($_GET['filtre']) ? g($_GET['filtre']) : '';
-$vurgu_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$filtre   = isset($_GET['filtre']) ? trim(strip_tags($_GET['filtre'])) : '';$vurgu_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $url_ek   = ($filtre == 'bekleyen') ? "&filtre=bekleyen" : "";
 
-if(isset($_GET['islem']) && isset($_GET['id'])){
-    $id = intval($_GET['id']);
-    if($_GET['islem'] == "onayla") $db->prepare("UPDATE ilanlar SET durum = 'aktif' WHERE id = ?")->execute([$id]);
-    elseif($_GET['islem'] == "reddet") $db->prepare("UPDATE ilanlar SET durum = 'pasif' WHERE id = ?")->execute([$id]);
-    elseif($_GET['islem'] == "sil") $db->prepare("DELETE FROM ilanlar WHERE id = ?")->execute([$id]);
-    header("Location: ilanlar.php?durum=ok".$url_ek); exit;
+if (isset($_GET['islem']) AND isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
+    if ($_GET['islem'] == "onayla") {
+        $db->prepare("UPDATE ilanlar SET durum = 'aktif' WHERE id = ?")->execute([$id]);
+    } elseif ($_GET['islem'] == "reddet") {
+        $db->prepare("UPDATE ilanlar SET durum = 'pasif' WHERE id = ?")->execute([$id]);
+    } elseif ($_GET['islem'] == "sil") {
+        $db->prepare("DELETE FROM ilanlar WHERE id = ?")->execute([$id]);
+    }
+    header("Location: ilanlar.php?durum=ok" . $url_ek);
+    exit;
 }
 
-$onay_bekleyen = $db->query("SELECT COUNT(*) FROM ilanlar WHERE durum = 'beklemede'")->fetchColumn();
-$yeni_mesaj    = $db->query("SELECT COUNT(*) FROM mesajlar WHERE okundu = 0")->fetchColumn();
+$onay_bekleyen = (int)$db->query("SELECT COUNT(*) FROM ilanlar WHERE durum = 'beklemede'")->fetchColumn();
+$yeni_mesaj    = (int)$db->query("SELECT COUNT(*) FROM mesajlar WHERE okundu = 0")->fetchColumn();
 
-// 2. ADIM: SORGULAMA MANTIĞI (ip_adresi ve user_agent eklendi)
+// 2. ADIM: ÇALIŞAN ORİJİNAL SORGU
 $sql = "SELECT i.*, u.ad_soyad, u.telefon, k.adi as kat_adi,
         (SELECT dosya_adi FROM ilan_resimleri WHERE ilan_id = i.id ORDER BY ana_resim DESC LIMIT 1) as kapak 
         FROM ilanlar i 
         JOIN uyeler u ON i.uye_id = u.id
         LEFT JOIN kategoriler k ON i.kategori_id = k.id";
 
-if($filtre == 'bekleyen') {
-    $sql .= " WHERE i.durum = 'beklemede' ORDER BY i.id DESC";
+if ($filtre == 'bekleyen') {$sql .= " WHERE i.durum = 'beklemede' ORDER BY i.id DESC";
 } else {
     $sql .= ($vurgu_id > 0) ? " ORDER BY (i.id = $vurgu_id) DESC, i.id DESC" : " ORDER BY i.id DESC";
 }
 
-$ilanlar = $db->query($sql)->fetchAll();
+$stmt =$db->query($sql);$ilanlar_ham = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+// 3. ADIM: RESİMLERİ SADECE BELLEKTE TEK SORGUDAN EŞLEŞTİRME
+$tum_resimler_ham =$db->query("SELECT ilan_id, dosya_adi FROM ilan_resimleri ORDER BY ana_resim DESC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+$resimler_by_ilan = [];
+foreach ($tum_resimler_ham as $r) {$resimler_by_ilan[$r['ilan_id']][] =$r['dosya_adi'];
+}
+
+// 4. ADIM: İLAN LİSTESİ VE GALERİ DİZİSİ
+$ilanlar = [];
+foreach ($ilanlar_ham as$i) {
+    $resim_adi =$i['kapak'] ?? '';
+    
+    $thumb_rel = "../uploads/ilanlar/thumbs/thumb_" . $resim_adi;
+    $ana_rel   = "../uploads/ilanlar/" . $resim_adi;
+    
+    if (!empty($resim_adi) AND file_exists(__DIR__ . "/" . $thumb_rel)) {
+        $i['gorsel_url'] =$thumb_rel;
+    } elseif (!empty($resim_adi) AND file_exists(__DIR__ . "/" . $ana_rel)) {
+        $i['gorsel_url'] =$ana_rel;
+    } else {
+        $i['gorsel_url'] = "../dosyalar/resim/yok.png";
+    }
+
+    if (!empty($resim_adi) AND file_exists(__DIR__ . "/" . $ana_rel)) {
+        $i['buyuk_gorsel_url'] =$ana_rel;
+    } else {
+        $i['buyuk_gorsel_url'] =$i['gorsel_url'];
+    }
+
+    $galeri = [];$ilan_resimleri_listesi = $resimler_by_ilan[$i['id']] ?? [];
+
+    foreach ($ilan_resimleri_listesi as$fileName) {
+        $g_thumb = "../uploads/ilanlar/thumbs/thumb_" . $fileName;
+        $g_ana   = "../uploads/ilanlar/" . $fileName;
+
+        $buyuk_yol = file_exists(__DIR__ . "/" . $g_ana) ?$g_ana : "../dosyalar/resim/yok.png";
+        $kucuk_yol = file_exists(__DIR__ . "/" . $g_thumb) ? $g_thumb :$buyuk_yol;
+
+        $galeri[] = [
+            'kucuk' => $kucuk_yol,
+            'buyuk' => $buyuk_yol
+        ];
+    }
+    $i['galeri_resimler'] =$galeri;
+
+    $ilanlar[] =$i;
+}
 
 $otomatik_ilan_verisi = null;
-if($vurgu_id > 0) {
-    foreach($ilanlar as $ilan) {
-        if($ilan['id'] == $vurgu_id) { $otomatik_ilan_verisi = $ilan; break; }
+if ($vurgu_id > 0) {
+    foreach ($ilanlar as$ilan) {
+        if ($ilan['id'] ==$vurgu_id) { $otomatik_ilan_verisi =$ilan; break; }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <title>İlan Yönetimi | ZiraatBox</title>
     <style>
-        :root { --admin-dark: #1a202c; --admin-green: #27ae60; --admin-orange: #ed8936; --admin-blue: #3182ce; --admin-red: #e53e3e; --admin-gray: #718096; }
+        :root { --admin-dark: #1a202c; --admin-green: #27ae60; --admin-orange: #ed8936; --admin-blue: #3182ce; --admin-red: #e53e3e; }
         body { margin: 0; font-family: 'Inter', 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; }
         .sidebar { width: 260px; background: var(--admin-dark); color: #fff; min-height: 100vh; padding: 20px; box-sizing: border-box; position: sticky; top: 0; }
         .sidebar h2 { color: #48bb78; margin-bottom: 30px; font-size: 24px; }
@@ -69,15 +124,17 @@ if($vurgu_id > 0) {
         .btn-incele { background: var(--admin-blue); }
         .btn-onay { background: var(--admin-green); }
         .btn-sil { background: var(--admin-red); }
-        .ilan-thumb { width: 65px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
+        .ilan-thumb { width: 65px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; background: #f8fafc; }
+        
         .modal-overlay { display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-        .modal-content { background: #fff; width: 90%; max-width: 850px; border-radius: 20px; padding: 0; overflow: hidden; position: relative; animation: modalSlide 0.3s ease-out; }
+        .modal-content { background: #fff; width: 90%; max-width: 850px; border-radius: 20px; padding: 0; overflow: hidden; position: relative; }
         
-        /* Güvenlik Kutusu Stili */
-        .security-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-top: 20px; }
-        .security-title { font-size: 11px; font-weight: 800; color: #e53e3e; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
-        
-        @keyframes modalSlide { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .security-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-top: 15px; }
+        .security-title { font-size: 11px; font-weight: 800; color: #e53e3e; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+
+        .galeri-liste { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .galeri-minik { width: 55px; height: 45px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid #e2e8f0; transition: 0.2s; }
+        .galeri-minik:hover, .galeri-minik.aktif { border-color: var(--admin-green); transform: scale(1.05); }
     </style>
 </head>
 <body>
@@ -117,18 +174,16 @@ if($vurgu_id > 0) {
                 </tr>
             </thead>
             <tbody>
-                <?php foreach($ilanlar as $i): 
-                    $img = !empty($i['kapak']) ? "../yuklemeler/ilanlar/".$i['kapak'] : "../dosyalar/resim/yok.png";
-                ?>
-                <tr id="row-<?php echo $i['id']; ?>" class="<?php echo ($i['id'] == $vurgu_id) ? 'vurgu' : ''; ?>">
-                    <td><img src="<?php echo $img; ?>" class="ilan-thumb"></td>
+                <?php foreach ($ilanlar as$i): ?>
+                <tr id="row-<?php echo $i['id']; ?>">
+                    <td><img src="<?php echo htmlspecialchars($i['gorsel_url']); ?>" class="ilan-thumb"></td>
                     <td>
                         <div style="font-weight: 700; color: #1a202c;"><?php echo htmlspecialchars($i['baslik']); ?></div>
-                        <div style="font-size: 12px; color: #27ae60; font-weight: 800;"><?php echo number_format($i['fiyat'],0,',','.'); ?> TL</div>
+                        <div style="font-size: 12px; color: #27ae60; font-weight: 800;"><?php echo number_format($i['fiyat'], 0, ',', '.'); ?> TL</div>
                     </td>
                     <td>
                         <div style="font-weight: 600; font-size: 13px;"><?php echo htmlspecialchars($i['ad_soyad']); ?></div>
-                        <div style="font-size: 11px; color: #718096;">IP: <?php echo !empty($i['ip_adresi']) ? $i['ip_adresi'] : 'Kayıt Yok'; ?></div>
+                        <div style="font-size: 11px; color: #718096;">IP: <?php echo !empty($i['ip_adresi']) ? htmlspecialchars($i['ip_adresi']) : 'Kayıt Yok'; ?></div>
                     </td>
                     <td>
                         <span class="badge <?php echo ($i['durum'] == 'beklemede') ? 'badge-pending' : 'badge-active'; ?>">
@@ -136,8 +191,8 @@ if($vurgu_id > 0) {
                         </span>
                     </td>
                     <td style="text-align: right;">
-                        <button class="islem-btn btn-incele" onclick='ilanIncele(<?php echo json_encode($i); ?>)'>🔍 İncele & Log</button>
-                        <a href="ilanlar.php?islem=sil&id=<?php echo $i['id'].$url_ek; ?>" class="islem-btn btn-sil" onclick="return confirm('İlan tamamen silinecek?')">🗑️</a>
+                        <button class="islem-btn btn-incele" onclick='modalAc(<?php echo json_encode($i, 15); ?>)'>🔍 İncele & Log</button>
+                        <a href="ilanlar.php?islem=sil&id=<?php echo $i['id'] .$url_ek; ?>" class="islem-btn btn-sil" onclick="return confirm('İlan tamamen silinecek?')">🗑️</a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -157,30 +212,49 @@ if($vurgu_id > 0) {
 </div>
 
 <script>
-function ilanIncele(ilan) {
+function resimDegistir(imgElem, yeniSrc) {
+    document.getElementById('m-ana-resim').src = yeniSrc;
+    document.querySelectorAll('.galeri-minik').forEach(el => el.classList.remove('aktif'));
+    imgElem.classList.add('aktif');
+}
+
+function modalAc(ilan) {
     const govde = document.getElementById('modalGovde');
     const mBaslik = document.getElementById('m-baslik');
-    mBaslik.innerText = ilan.baslik;
-    
+    mBaslik.innerText = ilan.baslik || 'İlan Detayı';
+
+    let galeriHtml = '';
+    let anaResimUrl = ilan.buyuk_gorsel_url || '../dosyalar/resim/yok.png';
+
+    if (ilan.galeri_resimler && ilan.galeri_resimler.length > 0) {
+        anaResimUrl = ilan.galeri_resimler[0].buyuk;
+        galeriHtml = '<div class="galeri-liste">';
+        ilan.galeri_resimler.forEach((r, idx) => {
+            galeriHtml += `<img src="${r.kucuk}" class="galeri-minik ${idx===0?'aktif':''}" onclick="resimDegistir(this, '${r.buyuk}')">`;
+        });
+        galeriHtml += '</div>';
+    }
+
     govde.innerHTML = `
         <div style="display:flex; gap:25px;">
             <div style="flex:1;">
-                <img src="../yuklemeler/ilanlar/${ilan.kapak || 'yok.png'}" style="width:100%; border-radius:12px; border:1px solid #eee;">
+                <img id="m-ana-resim" src="${anaResimUrl}" style="width:100%; height:220px; object-fit:cover; border-radius:12px; border:1px solid #eee; background:#f8fafc;">
+                ${galeriHtml}
                 <div style="margin-top:15px; background:#f0fdf4; padding:12px; border-radius:10px; text-align:center; border:1px solid #bbf7d0;">
                     <span style="display:block; font-size:11px; color:#166534; font-weight:800;">İLAN FİYATI</span>
                     <strong style="font-size:22px; color:#27ae60;">${new Intl.NumberFormat('tr-TR').format(ilan.fiyat)} TL</strong>
                 </div>
             </div>
             <div style="flex:1.5;">
-                <div style="margin-bottom:15px; border-bottom:1px solid #f1f5f9; pb-10">
+                <div style="margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
                     <label style="display:block; font-size:11px; font-weight:800; color:#a0aec0; text-transform:uppercase;">Satıcı & İletişim</label>
-                    <div style="font-weight:700; font-size:15px; color:#1a202c;">${ilan.ad_soyad}</div>
-                    <div style="color:#718096;">Tel: ${ilan.telefon}</div>
+                    <div style="font-weight:700; font-size:15px; color:#1a202c;">${ilan.ad_soyad || 'Bilinmiyor'}</div>
+                    <div style="color:#718096;">Tel: ${ilan.telefon || 'Belirtilmedi'}</div>
                 </div>
                 
                 <div style="margin-bottom:15px;">
                     <label style="display:block; font-size:11px; font-weight:800; color:#a0aec0; text-transform:uppercase;">Açıklama</label>
-                    <div style="font-size:13px; color:#4a5568; line-height:1.5; max-height:120px; overflow-y:auto; padding-right:5px; background:#fbfcfd; border-radius:8px; padding:10px; border:1px solid #f1f5f9;">${ilan.aciklama}</div>
+                    <div style="font-size:13px; color:#4a5568; line-height:1.5; max-height:100px; overflow-y:auto; padding-right:5px; background:#fbfcfd; border-radius:8px; padding:10px; border:1px solid #f1f5f9;">${ilan.aciklama || ''}</div>
                 </div>
 
                 <div class="security-box">
@@ -192,7 +266,7 @@ function ilanIncele(ilan) {
                         </div>
                         <div>
                             <span style="color:#94a3b8; display:block;">İşlem Zamanı</span>
-                            <strong style="color:#1a202c;">${ilan.created_at}</strong>
+                            <strong style="color:#1a202c;">${ilan.created_at || ''}</strong>
                         </div>
                         <div style="grid-column: span 2; margin-top:5px; padding-top:5px; border-top:1px dashed #cbd5e0;">
                             <span style="color:#94a3b8; display:block;">Cihaz Parmak İzi (User Agent)</span>
@@ -213,8 +287,8 @@ function ilanIncele(ilan) {
 function modalKapat() { document.getElementById('inceleModal').style.display = 'none'; }
 
 window.onload = function() {
-    <?php if($otomatik_ilan_verisi): ?>
-        ilanIncele(<?php echo json_encode($otomatik_ilan_verisi); ?>);
+    <?php if ($otomatik_ilan_verisi): ?>
+        modalAc(<?php echo json_encode($otomatik_ilan_verisi, 15); ?>);
     <?php endif; ?>
 }
 </script>

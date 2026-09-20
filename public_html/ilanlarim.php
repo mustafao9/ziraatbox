@@ -5,7 +5,6 @@ if (!isset($_SESSION['uye_id'])) { header("Location: giris.php"); exit; }
 $uye_id = $_SESSION['uye_id'];
 
 // Üyenin ilanlarını, ana resimlerini ve varsa şikayet sonucundaki admin notunu çekelim
-// NOT: Şikayet tablosundaki en güncel 'sonuc_mesaji' bilgisini alıyoruz
 $sorgu = $db->prepare("SELECT i.*, 
                         (SELECT dosya_adi FROM ilan_resimleri WHERE ilan_id = i.id ORDER BY ana_resim DESC LIMIT 1) as ana_resim,
                         (SELECT sonuc_mesaji FROM sikayetler WHERE ilan_id = i.id ORDER BY id DESC LIMIT 1) as moderasyon_notu
@@ -27,7 +26,7 @@ $ilanlar = $sorgu->fetchAll();
     .ilan-kart-yonetim { background: #fff; border-radius: 20px; border: 1px solid var(--z-border); margin-bottom: 20px; overflow: hidden; display: flex; align-items: stretch; transition: 0.3s; position: relative; }
     .ilan-kart-yonetim:hover { border-color: var(--z-green); box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     
-    .kart-resim-alan { width: 180px; position: relative; overflow: hidden; }
+    .kart-resim-alan { width: 180px; position: relative; overflow: hidden; background: #f8fafc; }
     .kart-resim { width: 100%; height: 100%; object-fit: cover; }
     
     .kart-icerik { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
@@ -63,7 +62,19 @@ $ilanlar = $sorgu->fetchAll();
 
     <div style="max-width: 1000px;">
         <?php if(count($ilanlar) > 0): foreach($ilanlar as $i): 
-            $resim = !empty($i['ana_resim']) ? URL."/yuklemeler/ilanlar/".$i['ana_resim'] : URL."/dosyalar/resim/yok.png";
+            
+            // 🖼️ AKILLI RESİM KONTROLÜ (WebP / Thumbnail / Fallback)
+            $resim_adi = $i['ana_resim'] ?? '';
+            $thumb_rel = "uploads/ilanlar/thumbs/thumb_" . $resim_adi;
+            $ana_rel   = "uploads/ilanlar/" . $resim_adi;
+            
+            if (!empty($resim_adi) && file_exists(__DIR__ . "/" . $thumb_rel)) {
+                $resim = URL . "/" . $thumb_rel;
+            } elseif (!empty($resim_adi) && file_exists(__DIR__ . "/" . $ana_rel)) {
+                $resim = URL . "/" . $ana_rel;
+            } else {
+                $resim = URL . "/dosyalar/resim/yok.png";
+            }
             
             // Durum Mantığı
             $durumClass = ($i['durum'] == 'aktif') ? 'durum-aktif' : (($i['durum'] == 'beklemede') ? 'durum-beklemede' : 'durum-pasif');
@@ -71,7 +82,7 @@ $ilanlar = $sorgu->fetchAll();
         ?>
             <div class="ilan-kart-yonetim">
                 <div class="kart-resim-alan">
-                    <img src="<?php echo $resim; ?>" class="kart-resim">
+                    <img src="<?php echo $resim; ?>" alt="<?php echo htmlspecialchars($i['baslik']); ?>" class="kart-resim">
                 </div>
                 
                 <div class="kart-icerik">

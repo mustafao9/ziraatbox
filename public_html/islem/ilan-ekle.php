@@ -1,6 +1,6 @@
 <?php
 /**
- * ZiraatBox - İlan Ekleme Motoru v3.0 (.env & Güvenlik Güncellemesi)
+ * ZiraatBox - İlan Ekleme Motoru v4.1 (WebP, Thumbnail & ENUM Doğrulaması)
  * Mustafa Satılmış - İncirliova / Aydın
  */
 
@@ -42,6 +42,106 @@ if (!function_exists('getRealIP')) {
     }
 }
 
+/**
+ * 🖼️ WEBP & THUMBNAIL DÖNÜŞTÜRÜCÜ YARDIMCI FONKSİYONLAR
+ */
+if (!function_exists('resimWebpIslem')) {
+    function resimWebpIslem($tmpName, $hedefKlasor, $maxGenislik = 1200, $kalite = 80) {
+        if (!file_exists($tmpName)) return false;
+        
+        $imageInfo = @getimagesize($tmpName);
+        if (!$imageInfo) return false;
+
+        $mime = $imageInfo['mime'] ?? '';
+        switch ($mime) {
+            case 'image/jpeg': $srcImage = @imagecreatefromjpeg($tmpName); break;
+            case 'image/png':  $srcImage = @imagecreatefrompng($tmpName); break;
+            case 'image/webp': $srcImage = @imagecreatefromwebp($tmpName); break;
+            default: return false;
+        }
+
+        if (!$srcImage) return false;
+
+        $genislik = $imageInfo[0];
+        $yukseklik = $imageInfo[1];
+
+        if ($genislik > $maxGenislik) {
+            $yeniGenislik = $maxGenislik;
+            $yeniYukseklik = (int)(($yukseklik / $genislik) * $maxGenislik);
+        } else {
+            $yeniGenislik = $genislik;
+            $yeniYukseklik = $yukseklik;
+        }
+
+        $dstImage = imagecreatetruecolor($yeniGenislik, $yeniYukseklik);
+        imagealphablending($dstImage, false);
+        imagesavealpha($dstImage, true);
+
+        imagecopyresampled($dstImage, $srcImage, 0, 0, 0, 0, $yeniGenislik, $yeniYukseklik, $genislik, $yukseklik);
+
+        if (!file_exists($hedefKlasor)) {
+            @mkdir($hedefKlasor, 0755, true);
+        }
+
+        $yeniDosyaAdi = "zbox_" . uniqid() . "_" . time() . ".webp";
+        $kayitYolu = rtrim($hedefKlasor, '/') . '/' . $yeniDosyaAdi;
+
+        $basarili = imagewebp($dstImage, $kayitYolu, $kalite);
+
+        imagedestroy($srcImage);
+        imagedestroy($dstImage);
+
+        return $basarili ? $yeniDosyaAdi : false;
+    }
+}
+
+if (!function_exists('thumbOlustur')) {
+    function thumbOlustur($kaynakYolu, $hedefKlasor, $genislik = 400, $yukseklik = 300, $kalite = 75) {
+        if (!file_exists($kaynakYolu)) return false;
+
+        $srcImage = @imagecreatefromwebp($kaynakYolu);
+        if (!$srcImage) return false;
+
+        $orjGenislik = imagesx($srcImage);
+        $orjYukseklik = imagesy($srcImage);
+
+        $dstImage = imagecreatetruecolor($genislik, $yukseklik);
+        imagealphablending($dstImage, false);
+        imagesavealpha($dstImage, true);
+
+        $orjOran = $orjGenislik / $orjYukseklik;
+        $hedefOran = $genislik / $yukseklik;
+
+        if ($orjOran >= $hedefOran) {
+            $cropYukseklik = $orjYukseklik;
+            $cropGenislik = (int)($orjYukseklik * $hedefOran);
+            $srcX = (int)(($orjGenislik - $cropGenislik) / 2);
+            $srcY = 0;
+        } else {
+            $cropGenislik = $orjGenislik;
+            $cropYukseklik = (int)($orjGenislik / $hedefOran);
+            $srcX = 0;
+            $srcY = (int)(($orjYukseklik - $cropYukseklik) / 2);
+        }
+
+        imagecopyresampled($dstImage, $srcImage, 0, 0, $srcX, $srcY, $genislik, $yukseklik, $cropGenislik, $cropYukseklik);
+
+        if (!file_exists($hedefKlasor)) {
+            @mkdir($hedefKlasor, 0755, true);
+        }
+
+        $dosyaAdi = basename($kaynakYolu);
+        $kayitYolu = rtrim($hedefKlasor, '/') . '/thumb_' . $dosyaAdi;
+
+        $basarili = imagewebp($dstImage, $kayitYolu, $kalite);
+
+        imagedestroy($srcImage);
+        imagedestroy($dstImage);
+
+        return $basarili;
+    }
+}
+
 // 🔐 OTURUM KONTROLÜ
 if (!isset($_SESSION['uye_id'])) { 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
@@ -68,9 +168,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mahalle_id  = (int)($_POST['mahalle_id'] ?? 0);
     $aciklama    = trim($_POST['aciklama'] ?? '');
     
-    // 🚀 GİZLİLİK VE İLETİŞİM AYARLARI
+    // 🚀 GİZLİLİK VE İLETİŞİM AYARLARI (ENUM DOĞRULAMASI)
     $iletisim_tercihi = trim($_POST['iletisim_tercihi'] ?? 'hepsi');
-    $isim_gizle       = isset($_POST['isim_gizle']) ? 1 : 0;
+    $gecerli_tercihler = ['hepsi', 'sadece_telefon', 'sadece_mesaj'];
+    if (!in_array($iletisim_tercihi, $gecerli_tercihler)) {
+        $iletisim_tercihi = 'hepsi';
+    }
+
+    $isim_gizle = isset($_POST['isim_gizle']) ? 1 : 0;
     
     // ⚖️ LOG BİLGİLERİ (5651 Yer Sağlayıcı Sorumluluğu)
     $ip_adresi  = getRealIP();
@@ -129,32 +234,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // 📸 RESİMLERİ GÜVENLİ YÜKLE
+            // 📸 RESİMLERİ WEBP & THUMBNAIL İLE GÜVENLİ YÜKLE
             if (isset($_FILES['ilan_resimleri']['name'][0]) && !empty($_FILES['ilan_resimleri']['name'][0])) {
-                $hedef_yol = __DIR__ . "/../yuklemeler/ilanlar/";
+                $hedef_yol = __DIR__ . "/../uploads/ilanlar/";
+                $thumb_yol = __DIR__ . "/../uploads/ilanlar/thumbs/";
                 if (!file_exists($hedef_yol)) { 
                     @mkdir($hedef_yol, 0755, true); 
                 }
+                if (!file_exists($thumb_yol)) { 
+                    @mkdir($thumb_yol, 0755, true); 
+                }
 
-                $gecerli_uzantilar = ['jpg', 'jpeg', 'png', 'webp'];
                 $gecerli_mime_tipleri = ['image/jpeg', 'image/png', 'image/webp'];
 
                 foreach ($_FILES['ilan_resimleri']['name'] as $i => $ad) {
                     if ($_FILES['ilan_resimleri']['error'][$i] === UPLOAD_ERR_OK) {
                         $tmp_yol = $_FILES['ilan_resimleri']['tmp_name'][$i];
-                        $uzanti  = strtolower(pathinfo($ad, PATHINFO_EXTENSION));
 
                         // MIME Tipi Kontrolü (Güvenlik)
                         $finfo = finfo_open(FILEINFO_MIME_TYPE);
                         $mime_type = finfo_file($finfo, $tmp_yol);
                         finfo_close($finfo);
 
-                        if (in_array($uzanti, $gecerli_uzantilar) && in_array($mime_type, $gecerli_mime_tipleri)) {
-                            $yeni_ad = "zbox_" . uniqid() . "_" . $i . "." . $uzanti;
-                            if (move_uploaded_file($tmp_yol, $hedef_yol . $yeni_ad)) {
-                                $ana_resim = ($i == 0) ? 1 : 0;
+                        if (in_array($mime_type, $gecerli_mime_tipleri)) {
+                            // 1. Ana Resmi WebP yap (Max 1200px genişlik, %80 kalite)
+                            $yeni_webp_adi = resimWebpIslem($tmp_yol, $hedef_yol, 1200, 80);
+
+                            if ($yeni_webp_adi) {
+                                // 2. Önizleme için Thumbnail (400x300px) Oluştur
+                                $ana_resim_tam_yol = $hedef_yol . $yeni_webp_adi;
+                                thumbOlustur($ana_resim_tam_yol, $thumb_yol, 400, 300, 75);
+
+                                // 3. Veritabanına Kaydet
+                                $ana_resim_durumu = ($i == 0) ? 1 : 0;
                                 $db->prepare("INSERT INTO ilan_resimleri (ilan_id, dosya_adi, ana_resim) VALUES (?, ?, ?)")
-                                   ->execute([$last_id, $yeni_ad, $ana_resim]);
+                                   ->execute([$last_id, $yeni_webp_adi, $ana_resim_durumu]);
                             }
                         }
                     }
