@@ -1,26 +1,32 @@
 <?php
 /**
- * ZiraatBox - Gelişmiş Yedekleme Motoru (Zaman Aşımı Korumalı)
+ * ZiraatBox - Esnek & Dinamik Yedekleme Motoru (SQL ZIP Desteği Eklendi)
  */
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 require_once "../../sistem/ayar.php";
 
-// 🔐 GÜVENLİK VE YETKİ
-if(!isset($_SESSION['admin_id']) || $_SESSION['yetki'] != 'admin'){
+if (!isset($_SESSION['admin_id']) OR ($_SESSION['yetki'] ?? '') != 'admin') {
     die("Yetkisiz erişim!");
 }
 
-// 🚀 BEYAZ SAYFAYI ENGELLEMEK İÇİN LİMİTLERİ KALDIRALIM
-set_time_limit(900); // 15 dakika çalışma süresi
-ini_set('memory_limit', '1024M'); // 1 GB RAM kullanımı
+set_time_limit(600);
+ini_set('memory_limit', '512M');
 
-$tip = isset($_GET['tip']) ? $_GET['tip'] : (isset($_POST['tip']) ? $_POST['tip'] : 'sql');
+$tip = $_GET['tip'] ?? ($_POST['tip'] ?? 'sql');
 $tarih = date("Y-m-d_H-i");
+
+// %100 GARANTİLİ YEDEK KLASÖRÜ YOLU: public_html/yonetim/yedekler/
 $yedek_klasor = dirname(__DIR__) . "/yedekler/";
 
-// Dizin kontrolü
-if (!is_dir($yedek_klasor)) { mkdir($yedek_klasor, 0755, true); }
+// Klasör yoksa tüm yetkilerle (0777) anında oluştur
+if (!is_dir($yedek_klasor)) { 
+    @mkdir($yedek_klasor, 0777, true); 
+}
 
-// --- 1. SQL DÖKÜM FONKSİYONU ---
+// --- SQL DÖKÜM FONKSİYONU ---
 function veritabaniYedekle($db) {
     $return = "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
     $tables = array();
@@ -50,56 +56,75 @@ function veritabaniYedekle($db) {
     return $return;
 }
 
-// --- 2. İŞLEM BAŞLASIN ---
+// --- İŞLEM BAŞLASIN ---
 try {
-    if($tip == 'sql') {
+    // 💾 A) SADECE SQL YEDEĞİ (ARTIK ZIP OLARAK SIKIŞTIRILIYOR)
+    if ($tip == 'sql') {
         $sql_icerik = veritabaniYedekle($db);
-        $dosya_adi = "DB_Yedek_".$tarih.".sql";
-        file_put_contents($yedek_klasor . $dosya_adi, $sql_icerik);
-        header("Location: ../yedekleme.php?islem=ok");
-        exit;
-    }
-
-    if($tip == 'full' || $tip == 'no_images') {
-        $zip = new ZipArchive();
-        $dosya_adi = ($tip == 'full' ? 'FULL_Yedek_' : 'Kod_Yedek_') . $tarih . ".zip";
+        $dosya_adi = "DB_Yedek_" . $tarih . ".zip";
         
-        if ($zip->open($yedek_klasor . $dosya_adi, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-            $rootPath = realpath(dirname(dirname(__DIR__))); // /public_html/
-            $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($rootPath), RecursiveIteratorIterator::LEAVES_ONLY);
-
-            foreach ($files as $name => $file) {
-                if (!$file->isDir()) {
-                    $filePath = $file->getRealPath();
-                    $relativePath = substr($filePath, strlen($rootPath) + 1);
-                    
-                    // Windows/Linux yol ayrımı uyumu için ters eğik çizgileri düzelt
-                    $normalizedPath = str_replace('\\', '/', $relativePath);
-
-                    // 🛡️ GÜVENLİK VE HARİÇ TUTMA FİLTRELERİ
-                    // 1. .env ve gizli sistem yapılandırma dosyalarını zip arşivine ekleme
-                    if (basename($normalizedPath) === '.env' || stristr($normalizedPath, '.env')) continue;
-                    
-                    // 2. Yüklemeleri, yedek klasörlerini, logları ve .git dizinini hariç tut
-                    if ($tip == 'no_images' && strpos($normalizedPath, 'yuklemeler/') === 0) continue; 
-                    if (strpos($normalizedPath, 'yonetim/yedekler/') === 0) continue; // Yedekleri yedekleme!
-                    if (strpos($normalizedPath, 'error_log') !== false) continue; // Logları yedekleme
-                    if (strpos($normalizedPath, '.git') !== false) continue; // Git verilerini yedekleme
-
-                    $zip->addFile($filePath, $relativePath);
-                }
-            }
-            
-            // SQL'i de ZIP içine ekle
-            $zip->addFromString("veritabani_yedek.sql", veritabaniYedekle($db));
+        $zip = new ZipArchive();
+        if ($zip->open($yedek_klasor . $dosya_adi, ZipArchive::CREATE OR ZipArchive::OVERWRITE) === TRUE) {
+            $zip->addFromString("veritabani_yedek_" . $tarih . ".sql", $sql_icerik);
             $zip->close();
             
             header("Location: ../yedekleme.php?islem=ok");
             exit;
         } else {
-            die("Hata: ZIP dosyası oluşturulamadı.");
+            die("Hata: SQL ZIP dosyası oluşturulamadı!");
+        }
+    }
+
+    // 📦 B) KOD + SQL VEYA FULL YEDEK
+    if ($tip == 'full' OR $tip == 'no_images') {
+        $zip = new ZipArchive();
+        $dosya_adi = ($tip == 'full' ? 'FULL_Yedek_' : 'Kod_Yedek_') . $tarih . ".zip";
+        
+        if ($zip->open($yedek_klasor . $dosya_adi, ZipArchive::CREATE OR ZipArchive::OVERWRITE) === TRUE) {
+
+            // Taranacak kök dizin: public_html/
+            $rootPath = dirname(dirname(__DIR__));
+
+            $files = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($rootPath, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::LEAVES_ONLY
+            );
+
+            foreach ($files as $name => $file) {
+                if (!$file->isDir()) {
+                    $filePath = $file->getRealPath();
+                    $relativePath = substr($filePath, strlen($rootPath) + 1);
+                    $normalizedPath = str_replace('\\', '/', $relativePath);
+
+                    // 1. Gizli sistem dosyalarını engelle
+                    if (basename($normalizedPath) === '.env' OR strpos($normalizedPath, '.env') !== false) continue;
+                    if (strpos($normalizedPath, '.git') !== false) continue;
+                    if (strpos($normalizedPath, '.vscode') !== false) continue;
+
+                    // 2. YEDEKLERİ HARİÇ TUT (Sonsuz Döngü Koruması)
+                    if (strpos($normalizedPath, 'yonetim/yedekler/') !== false OR strpos($normalizedPath, 'yedekler/') !== false) continue;
+                    
+                    $ext = strtolower(pathinfo($normalizedPath, PATHINFO_EXTENSION));
+                    if ($ext === 'zip' OR $ext === 'sql') continue;
+
+                    // 3. Resimleri hariç tut (no_images modunda)
+                    if ($tip == 'no_images') {
+                        if (strpos($normalizedPath, 'uploads/') !== false OR strpos($normalizedPath, 'yuklemeler/') !== false) continue;
+                    }
+
+                    $zip->addFile($filePath, $relativePath);
+                }
+            }
+
+            $zip->addFromString("veritabani_yedek.sql", veritabaniYedekle($db));
+            $zip->close();
+
+            header("Location: ../yedekleme.php?islem=ok");
+            exit;
+        } else {
+            die("Hata: ZIP dosyası oluşturulamadı!");
         }
     }
 } catch (Exception $e) {
-    die("Sistem Hatası: " . $e->getMessage());
+    die("Yedekleme Hatası: " . $e->getMessage());
 }

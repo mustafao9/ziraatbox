@@ -1,31 +1,56 @@
 <?php 
 require_once "../sistem/ayar.php"; 
 
-if(!isset($_SESSION['admin_id']) || $_SESSION['yetki'] != 'admin'){
-    header("Location: giris.php"); exit;
+if (!isset($_SESSION['admin_id']) OR ($_SESSION['yetki'] ?? '') != 'admin') {
+    header("Location: giris.php"); 
+    exit;
 }
 
-$dizin = "yedekler/";
-if (!is_dir($dizin)) { mkdir($dizin, 0755, true); }
-$dosyalar = array_diff(scandir($dizin), array('..', '.', '.htaccess'));
+// %100 GARANTİLİ YEDEK KLASÖRÜ YOLU: public_html/yonetim/yedekler/
+$dizin_tam = __DIR__ . "/yedekler/";
 
-// Tarihe göre sıralama
-usort($dosyalar, function($a, $b) use ($dizin) {
-    return filemtime($dizin . $b) - filemtime($dizin . $a);
+// Klasör yoksa listeleme çökmesin diye anında oluştur
+if (!is_dir($dizin_tam)) { 
+    @mkdir($dizin_tam, 0777, true); 
+}
+
+$ham_dosyalar = is_dir($dizin_tam) ? array_diff(scandir($dizin_tam), array('..', '.', '.htaccess', 'index.html')) : [];
+
+$dosyalar = [];
+foreach ($ham_dosyalar as $f) {
+    if (is_file($dizin_tam . $f)) {
+        $dosyalar[] = $f;
+    }
+}
+
+// Tarihe göre sıralama (En yeni en üstte)
+usort($dosyalar, function($a, $b) use ($dizin_tam) {
+    return filemtime($dizin_tam . $b) - filemtime($dizin_tam . $a);
 });
 
 // Gruplandırma
-$sql_list = []; $kod_sql_list = []; $full_list = [];
+$sql_list = []; 
+$kod_sql_list = []; 
+$full_list = [];
+
 foreach($dosyalar as $dosya) {
-    if(strpos($dosya, 'DB_') !== false) $sql_list[] = $dosya;
-    elseif(strpos($dosya, 'Kod_') !== false) $kod_sql_list[] = $dosya;
-    elseif(strpos($dosya, 'FULL_') !== false || strpos($dosya, 'AUTO_') !== false) $full_list[] = $dosya;
+    $dosya_upper = strtoupper($dosya);
+    
+    if (strpos($dosya_upper, 'DB_') !== false OR strpos($dosya_upper, 'AUTO_SQL_') !== false OR pathinfo($dosya, PATHINFO_EXTENSION) === 'sql') {
+        $sql_list[] = $dosya;
+    } 
+    elseif (strpos($dosya_upper, 'KOD_') !== false OR strpos($dosya_upper, 'AUTO_KOD_') !== false) {
+        $kod_sql_list[] = $dosya;
+    } 
+    else {
+        $full_list[] = $dosya;
+    }
 }
 
 // Bildirimler
 $mesaj = ""; $mesaj_tur = "";
-if(isset($_GET['islem'])){
-    switch($_GET['islem']){
+if (isset($_GET['islem'])) {
+    switch($_GET['islem']) {
         case 'ok': $mesaj = "✅ Yedekleme başarıyla tamamlandı."; $mesaj_tur = "success"; break;
         case 'silindi': $mesaj = "🗑️ Yedek dosyası silindi."; $mesaj_tur = "info"; break;
         case 'restore_ok': $mesaj = "🚀 Sistem başarıyla geri yüklendi!"; $mesaj_tur = "restore"; break;
@@ -94,8 +119,8 @@ if(isset($_GET['islem'])){
 </div>
 
 <div class="content-area">
-    <?php if($mesaj): ?>
-        <div class="alert alert-<?php echo ($mesaj_tur=='restore'?'restore':'success'); ?>"><?php echo $mesaj; ?></div>
+    <?php if ($mesaj): ?>
+        <div class="alert alert-<?php echo ($mesaj_tur == 'restore' ? 'restore' : 'success'); ?>"><?php echo $mesaj; ?></div>
     <?php endif; ?>
 
     <div id="sql" class="tab-panel active">
@@ -105,7 +130,7 @@ if(isset($_GET['islem'])){
             <a href="islem/yedek-al.php?tip=sql" class="btn-main"><i class="fa-solid fa-plus-circle"></i> ŞİMDİ SQL YEDEKLE</a>
         </div>
         <div class="table-card">
-            <?php renderBackupTable($sql_list, $dizin); ?>
+            <?php renderBackupTable($sql_list, $dizin_tam); ?>
         </div>
     </div>
 
@@ -116,7 +141,7 @@ if(isset($_GET['islem'])){
             <a href="islem/yedek-al.php?tip=no_images" class="btn-main" style="background:#f59e0b;"><i class="fa-solid fa-file-export"></i> SAYFALARI YEDEKLE</a>
         </div>
         <div class="table-card">
-            <?php renderBackupTable($kod_sql_list, $dizin); ?>
+            <?php renderBackupTable($kod_sql_list, $dizin_tam); ?>
         </div>
     </div>
 
@@ -127,7 +152,7 @@ if(isset($_GET['islem'])){
             <a href="islem/yedek-al.php?tip=full" class="btn-main" style="background:#10b981;"><i class="fa-solid fa-layer-group"></i> TAM YEDEK OLUŞTUR</a>
         </div>
         <div class="table-card">
-            <?php renderBackupTable($full_list, $dizin); ?>
+            <?php renderBackupTable($full_list, $dizin_tam); ?>
         </div>
     </div>
 
@@ -137,7 +162,7 @@ if(isset($_GET['islem'])){
             <p style="color:#64748b;">Sunucudaki tüm yedekler en yeni tarihten itibaren listelenir.</p>
         </div>
         <div class="table-card">
-            <?php renderBackupTable($dosyalar, $dizin, true); ?>
+            <?php renderBackupTable($dosyalar, $dizin_tam, true); ?>
         </div>
     </div>
 
@@ -172,11 +197,15 @@ if(isset($_GET['islem'])){
 </div>
 
 <?php 
-function renderBackupTable($files, $dizin, $isRestore = false) {
-    if(empty($files)) { echo "<div style='padding:50px; text-align:center; color:#94a3b8;'>Bu kategoride kayıt bulunamadı.</div>"; return; }
+function renderBackupTable($files, $dizin_tam, $isRestore = false) {
+    if (empty($files)) { 
+        echo "<div style='padding:50px; text-align:center; color:#94a3b8;'>Bu kategoride kayıt bulunamadı.</div>"; 
+        return; 
+    }
     echo "<table><thead><tr><th>DOSYA ADI / TARİH</th><th>BOYUT</th><th style='text-align:right;'>İŞLEM</th></tr></thead><tbody>";
     foreach($files as $f) {
-        $yol = $dizin.$f;
+        $yol = $dizin_tam . $f;
+        if (!file_exists($yol)) continue;
         $boyut = round(filesize($yol) / 1024 / 1024, 2);
         $tarih = date("d.m.Y H:i", filemtime($yol));
         echo "<tr>
