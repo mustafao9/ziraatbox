@@ -1,0 +1,34 @@
+# ----------------------------------------------------------------------
+# ZiraatBox - Ana Dizin Yönlendirme ve Güvenlik Ayarları (v2.0)
+# ----------------------------------------------------------------------
+
+RewriteEngine On
+RewriteBase /
+
+# 1. HTTPS Yönlendirmesi
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 2. Dinamik Sitemap Yönlendirmesi (YENİ)
+# Google ziraatbox.com/sitemap.xml aradığında sitemap.php çalışacak
+RewriteRule ^sitemap.xml$ sitemap.php [L,NC]
+
+# 3. Klasör ve Dosya Kontrolü
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# 4. SEO Uyumlu Sayfa Yönlendirmeleri
+# Not: Sitenizde slug yapısı kullanıyorsanız bunlar çok kritiktir
+RewriteRule ^ilan/([0-9a-zA-Z-_]+)$ ilan-detay.php?slug=$1 [L,QSA]
+RewriteRule ^kategori/([0-9a-zA-Z-_]+)$ kategori.php?slug=$1 [L,QSA]
+
+# 5. Uzantısız Erişim
+# Örn: ziraatbox.com/hakkimizda yazınca hakkimizda.php çalışır
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^([^\.]+)$ $1.php [NC,L]
+
+# 6. Güvenlik Ayarları - Klasör Listelemeyi Kapat
+Options -Indexes
+
+# 7. UTF-8 Karakter Desteği
+AddDefaultCharset UTF-8

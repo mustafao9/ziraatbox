@@ -1,0 +1,47 @@
+[29-Aug-2026 22:27:57 Europe/Istanbul] PHP Notice:  Undefined variable: is_bold in /home/ziraatbo/public_html/sistem/ayar.php on line 67
+[30-Aug-2026 03:25:44 Europe/Istanbul] PHP Notice:  Undefined variable: is_bold in /home/ziraatbo/public_html/sistem/ayar.php on line 67
+[07-Sep-2026 21:54:37 Europe/Istanbul] PHP Notice:  Undefined variable: is_bold in /home/ziraatbo/public_html/sistem/ayar.php on line 67
+[08-Sep-2026 06:13:57 Europe/Istanbul] PHP Notice:  Undefined variable: is_bold in /home/ziraatbo/public_html/sistem/ayar.php on line 67
+[10-Sep-2026 03:55:49 Europe/Istanbul] PHP Notice:  Undefined variable: is_bold in /home/ziraatbo/public_html/sistem/ayar.php on line 67
+[12-Sep-2026 23:30:21 Europe/Istanbul] PHP Notice:  Undefined variable: is_bold in /home/ziraatbo/public_html/sistem/ayar.php on line 67
+[15-Sep-2026 03:18:11 Europe/Istanbul] PHP Notice:  Undefined variable: is_bold in /home/ziraatbo/public_html/sistem/ayar.php on line 67
+[20-Sep-2026 01:32:00 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:22
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 22
+[20-Sep-2026 01:32:18 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:22
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 22
+[20-Sep-2026 01:33:53 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:26
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 26
+[20-Sep-2026 01:35:01 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:25
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 25
+[20-Sep-2026 01:39:42 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:21
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 21
+[20-Sep-2026 01:40:57 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:19
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 19
+[20-Sep-2026 01:41:08 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:19
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 19
+[20-Sep-2026 01:43:49 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:19
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 19
+[20-Sep-2026 01:46:10 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:16
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 16
+[20-Sep-2026 01:46:59 Europe/Istanbul] PHP Fatal error:  Uncaught Error: Call to undefined method Google_Client::fetchAccessTokenWithAuthCode() in /home/ziraatbo/public_html/islem/google-callback.php:20
+Stack trace:
+#0 {main}
+  thrown in /home/ziraatbo/public_html/islem/google-callback.php on line 20

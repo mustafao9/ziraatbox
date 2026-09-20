@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /yonetim/
+Disallow: /islem/
+Disallow: /parcalar/
+
+Sitemap: https://ziraatbox.com/sitemap.xml
