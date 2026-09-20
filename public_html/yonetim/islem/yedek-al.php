@@ -10,8 +10,8 @@ if(!isset($_SESSION['admin_id']) || $_SESSION['yetki'] != 'admin'){
 }
 
 // 🚀 BEYAZ SAYFAYI ENGELLEMEK İÇİN LİMİTLERİ KALDIRALIM
-set_time_limit(900); // 15 dakika çalışma süresi veriyoruz
-ini_set('memory_limit', '1024M'); // 1 GB RAM kullanımına izin veriyoruz (Sunucu izin verdiği ölçüde)
+set_time_limit(900); // 15 dakika çalışma süresi
+ini_set('memory_limit', '1024M'); // 1 GB RAM kullanımı
 
 $tip = isset($_GET['tip']) ? $_GET['tip'] : (isset($_POST['tip']) ? $_POST['tip'] : 'sql');
 $tarih = date("Y-m-d_H-i");
@@ -72,11 +72,19 @@ try {
                 if (!$file->isDir()) {
                     $filePath = $file->getRealPath();
                     $relativePath = substr($filePath, strlen($rootPath) + 1);
+                    
+                    // Windows/Linux yol ayrımı uyumu için ters eğik çizgileri düzelt
+                    $normalizedPath = str_replace('\\', '/', $relativePath);
 
-                    // 🛡️ Filtreler
-                    if ($tip == 'no_images' && strpos($relativePath, 'yuklemeler/') === 0) continue; 
-                    if (strpos($relativePath, 'yonetim/yedekler/') === 0) continue; // Yedekleri yedekleme!
-                    if (strpos($relativePath, 'error_log') !== false) continue; // Logları yedekleme
+                    // 🛡️ GÜVENLİK VE HARİÇ TUTMA FİLTRELERİ
+                    // 1. .env ve gizli sistem yapılandırma dosyalarını zip arşivine ekleme
+                    if (basename($normalizedPath) === '.env' || stristr($normalizedPath, '.env')) continue;
+                    
+                    // 2. Yüklemeleri, yedek klasörlerini, logları ve .git dizinini hariç tut
+                    if ($tip == 'no_images' && strpos($normalizedPath, 'yuklemeler/') === 0) continue; 
+                    if (strpos($normalizedPath, 'yonetim/yedekler/') === 0) continue; // Yedekleri yedekleme!
+                    if (strpos($normalizedPath, 'error_log') !== false) continue; // Logları yedekleme
+                    if (strpos($normalizedPath, '.git') !== false) continue; // Git verilerini yedekleme
 
                     $zip->addFile($filePath, $relativePath);
                 }

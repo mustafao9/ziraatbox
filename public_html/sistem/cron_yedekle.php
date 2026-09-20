@@ -61,11 +61,18 @@ if ($zip->open($yedek_klasor . $dosya_adi, ZipArchive::CREATE) === TRUE) {
         if (!$file->isDir()) {
             $filePath = $file->getRealPath();
             $relativePath = substr($filePath, strlen($rootPath) + 1);
+            
+            // Windows/Linux yol ayrımı uyumu için ters eğik çizgileri düzelt
+            $normalizedPath = str_replace('\\', '/', $relativePath);
 
-            // Filtreler
-            if (YEDEK_ICERIK == 'kod_sql' && strpos($relativePath, 'yuklemeler/') === 0) continue;
-            if (strpos($relativePath, 'yonetim/yedekler/') === 0) continue;
-            if (strpos($relativePath, '.git') !== false) continue;
+            // --- GÜVENLİK FİLTRELERİ ---
+            // 1. .env ve gizli sistem ayarlarını zip arşivine ekleme
+            if (basename($normalizedPath) === '.env' || stristr($normalizedPath, '.env')) continue;
+            
+            // 2. Yüklemeleri ve yedek klasörlerini hariç tut
+            if (YEDEK_ICERIK == 'kod_sql' && strpos($normalizedPath, 'yuklemeler/') === 0) continue;
+            if (strpos($normalizedPath, 'yonetim/yedekler/') === 0) continue;
+            if (strpos($normalizedPath, '.git') !== false) continue;
 
             $zip->addFile($filePath, $relativePath);
         }

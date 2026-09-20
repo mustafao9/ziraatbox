@@ -11,6 +11,9 @@ if (isset($_SESSION['uye_id'])) {
     header("Location: " . URL . "/index.php"); 
     exit; 
 }
+
+// Localhost/Geliştirme ortamı kontrolü
+$is_local = (defined('APP_ENV') && APP_ENV === 'local') || (function_exists('env') && env('APP_ENV') === 'local');
 ?>
 
 <div style="width: 100%; min-height: 80vh; display: flex; justify-content: center; align-items: center; background: #f4f7f6; padding: 40px 0; margin: 0 auto;">
@@ -52,9 +55,11 @@ if (isset($_SESSION['uye_id'])) {
                 <input type="password" name="sifre" style="width: 100%; padding: 14px; border: 2px solid #edf2f7; border-radius: 12px; outline: none; box-sizing: border-box;" placeholder="••••••••" required>
             </div>
 
-            <div style="margin-bottom: 20px; display: flex; justify-content: center;">
-                <div class="g-recaptcha" data-sitekey="<?php echo defined('RECAPTCHA_SITE_KEY') ? RECAPTCHA_SITE_KEY : '6Lf5NYQsAAAAALvt4iKM_jQrkHLVW5KweD0IH7Kv'; ?>"></div>
-            </div>
+            <?php if (!$is_local): ?>
+                <div style="margin-bottom: 20px; display: flex; justify-content: center;">
+                    <div class="g-recaptcha" data-sitekey="<?php echo defined('RECAPTCHA_SITE_KEY') ? RECAPTCHA_SITE_KEY : '6Lf5NYQsAAAAALvt4iKM_jQrkHLVW5KweD0IH7Kv'; ?>"></div>
+                </div>
+            <?php endif; ?>
 
             <button type="submit" name="giris" style="width: 100%; padding: 16px; background: #27ae60; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 800; cursor: pointer;">Giriş Yap</button>
         </form>
@@ -65,5 +70,8 @@ if (isset($_SESSION['uye_id'])) {
     </div>
 </div>
 
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<?php if (!$is_local): ?>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<?php endif; ?>
+
 <?php require_once "parcalar/alt.php"; ?>
