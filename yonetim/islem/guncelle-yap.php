@@ -1371,6 +1371,17 @@ try {
         'ZIP gecici klasore acildi.'
     );
 
+    /* --------------------------------------------------------
+       SÜRÜM DOSYASINI (versiyon.php) OTOMATİK GÜNCELLE
+       -------------------------------------------------------- */
+    $hedef_versiyon = $_GET['version'] ?? $version ?? '1.0.18';
+    $v_dosya_yolu = dirname(__DIR__, 2) . "/sistem/versiyon.php";
+    $v_icerik = "<?php\n/**\n * ZiraatBox - Otomatik Sürüm Dosyası\n */\ndefine('SISTEM_VERSIYON', '{$hedef_versiyon}');\n";
+    file_put_contents($v_dosya_yolu, $v_icerik);
+
+    update_log(
+        "sistem/versiyon.php dosyasi v{$hedef_versiyon} olarak guncellendi."
+    );
 
     /* --------------------------------------------------------
        GÜNCELLEME DOSYALARINI BUL

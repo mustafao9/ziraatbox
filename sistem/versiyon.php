@@ -1,7 +1,5 @@
 <?php
 /**
- * ZiraatBox - Sürüm Tanımlama Dosyası
+ * ZiraatBox - Otomatik Sürüm Dosyası
  */
-if (!defined('SISTEM_VERSIYON')) {
-    define('SISTEM_VERSIYON', '1.0.17');
-}
+define('SISTEM_VERSIYON', '1.0.18');
