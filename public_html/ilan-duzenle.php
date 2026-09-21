@@ -154,7 +154,7 @@ $maskeli_onizleme = ($isim_parca[0] ?? 'Kullanıcı') . (isset($isim_parca[1]) ?
             <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
                 <?php foreach($mevcut_resimler as $r): ?>
                 <div class="img-box">
-                    <img src="<?php echo URL; ?>/yuklemeler/ilanlar/<?php echo $r['dosya_adi']; ?>" style="width:100%; height:100%; object-fit:cover;">
+                    <img src="<?php echo URL; ?>/uploads/ilanlar/<?php echo $r['dosya_adi']; ?>" style="width:100%; height:100%; object-fit:cover;">
                     <label class="img-delete">
                         <input type="checkbox" name="silinecek_resimler[]" value="<?php echo $r['id']; ?>"> Sil
                     </label>

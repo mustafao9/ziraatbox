@@ -70,7 +70,7 @@ $favoriler = $sorgu->fetchAll();
     <div class="fav-grid">
         <?php if(count($favoriler) > 0): ?>
             <?php foreach($favoriler as $f): 
-                $resim = !empty($f['ana_resim']) ? URL."/yuklemeler/ilanlar/".$f['ana_resim'] : URL."/dosyalar/resim/yok.png";
+                $resim = !empty($f['ana_resim']) ? URL."/uploads/ilanlar/".$f['ana_resim'] : URL."/dosyalar/resim/yok.png";
                 $fiyat_dustu_mu = ($f['fiyat'] < $f['eklenen_fiyat']);
             ?>
                 <div class="fav-kart" id="favRow_<?php echo $f['id']; ?>">

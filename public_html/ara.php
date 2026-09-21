@@ -229,7 +229,7 @@ if ($kat_id > 0) {
 
         <div class="plus-ilan-grid">
             <?php if(count($sonuclar) > 0): foreach($sonuclar as $i): 
-                $img = !empty($i['ana_resim']) ? URL."/yuklemeler/ilanlar/".$i['ana_resim'] : URL."/dosyalar/resim/yok.png";
+                $img = !empty($i['ana_resim']) ? URL."/uploads/ilanlar/".$i['ana_resim'] : URL."/dosyalar/resim/yok.png";
             ?>
                 <a href="ilan-detay.php?id=<?php echo $i['id']; ?>" class="plus-card">
                     <div class="plus-img">

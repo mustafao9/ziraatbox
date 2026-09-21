@@ -114,7 +114,7 @@ $liste = $ilan_sorgu->fetchAll();
                 </thead>
                 <tbody>
                     <?php if(count($liste) > 0): foreach($liste as $l): 
-                        $img = !empty($l['resim']) ? 'yuklemeler/ilanlar/'.$l['resim'] : 'dosyalar/resim/yok.png';
+                        $img = !empty($l['resim']) ? 'uploads/ilanlar/'.$l['resim'] : 'dosyalar/resim/yok.png';
                         $durum_class = "status-".$l['durum'];
                     ?>
                     <tr>

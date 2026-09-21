@@ -72,3 +72,7 @@ date_default_timezone_set('Europe/Istanbul');
 if (file_exists(__DIR__ . "/fonksiyonlar.php")) {
     require_once __DIR__ . "/fonksiyonlar.php";
 }
+// VERSİYON BİLGİSİ
+if (file_exists(__DIR__ . "/versiyon.php")) {
+    require_once __DIR__ . "/versiyon.php";
+}

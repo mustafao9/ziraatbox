@@ -193,7 +193,7 @@ $in_query = implode(',', array_fill(0, count($kategori_havuzu), '?'));
 
             if (count($ilanlar) > 0):
                 foreach ($ilanlar as $ilan): 
-                    $res = !empty($ilan['resim']) ? URL."/yuklemeler/ilanlar/".$ilan['resim'] : URL."/dosyalar/resim/yok.png";
+                    $res = !empty($ilan['resim']) ? URL."/uploads/ilanlar/".$ilan['resim'] : URL."/dosyalar/resim/yok.png";
             ?>
             <a href="ilan-detay.php?id=<?php echo $ilan['id']; ?>" class="plus-card">
                 <div class="plus-img">

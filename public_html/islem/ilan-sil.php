@@ -31,7 +31,7 @@ if ($id > 0) {
             $resimler->execute([$id]);
             $resim_listesi = $resimler->fetchAll();
 
-            $dizin = __DIR__ . "/../yuklemeler/ilanlar/";
+            $dizin = __DIR__ . "/../uploads/ilanlar/";
 
             foreach ($resim_listesi as $r) {
                 if (!empty($r['dosya_adi'])) {

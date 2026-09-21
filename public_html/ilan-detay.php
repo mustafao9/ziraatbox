@@ -4,9 +4,14 @@ require_once "parcalar/ust.php";
 // 1. İLAN ID KONTROLÜ
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
+if ($id <= 0) { 
+    header("Location: index.php"); 
+    exit; 
+}
+
 // 2. İSTATİSTİK VE LOG SİSTEMİ (Ziyaret Takibi)
 $bugun = date('Y-m-d');
-$ip = $_SERVER['REMOTE_ADDR'];
+$ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
 $ip_kontrol = $db->prepare("SELECT id FROM ilan_izlenim_log WHERE ilan_id = ? AND izlenme_tarihi = ? AND IP_adresi = ?");
 $ip_kontrol->execute([$id, $bugun, $ip]);
@@ -17,22 +22,24 @@ if (!$ip_kontrol->fetch()) {
 }
 
 $bugun_izlenme = $db->query("SELECT COUNT(*) FROM ilan_izlenim_log WHERE ilan_id = $id AND izlenme_tarihi = '$bugun'")->fetchColumn();
-$hafta_izlenme = $db->query("SELECT COUNT(*) FROM ilan_izlenim_log WHERE ilan_id = $id AND izlenme_tarihi >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)")->fetchColumn();
 
-// 3. İLAN, ÜYE VE KONUM BİLGİLERİNİ ÇEKELİM
+// 3. İLAN, ÜYE VE KONUM BİLGİLERİNİ ÇEKELİM (SQL Şemasına Tam Uyumlu)
 $sorgu = $db->prepare("SELECT i.*, 
                         il.il_adi, ilc.ilce_adi, m.mahalle_adi, 
                         u.ad_soyad, u.telefon, u.profil_foto, u.created_at as uye_tarihi
                        FROM ilanlar i 
-                       LEFT JOIN iller il ON i.il = il.id
-                       LEFT JOIN ilceler ilc ON i.ilce = ilc.id
-                       LEFT JOIN mahalleler m ON i.mahalle = m.id
+                       LEFT JOIN iller il ON (i.il = il.id OR i.il = il.il_adi)
+                       LEFT JOIN ilceler ilc ON (i.ilce = ilc.id OR i.ilce = ilc.ilce_adi)
+                       LEFT JOIN mahalleler m ON (i.mahalle = m.id OR i.mahalle = m.mahalle_adi)
                        LEFT JOIN uyeler u ON i.uye_id = u.id
                        WHERE i.id = ? AND i.durum = 'aktif'");
 $sorgu->execute([$id]);
-$ilan = $sorgu->fetch();
+$ilan = $sorgu->fetch(PDO::FETCH_ASSOC);
 
-if (!$ilan) { header("Location: index.php"); exit; }
+if (!$ilan) { 
+    header("Location: index.php"); 
+    exit; 
+}
 
 // BREADCRUMB
 function breadcrumbGetir($db, $kat_id) {
@@ -40,37 +47,46 @@ function breadcrumbGetir($db, $kat_id) {
     while ($kat_id > 0) {
         $s = $db->prepare("SELECT id, adi, slug, ust_id FROM kategoriler WHERE id = ?");
         $s->execute([$kat_id]);
-        $k = $s->fetch();
+        $k = $s->fetch(PDO::FETCH_ASSOC);
         if ($k) {
-            array_unshift($yol, '<a href="kategori.php?slug='.$k['slug'].'" style="color: #27ae60; text-decoration: none; font-weight: 700;">'.$k['adi'].'</a>');
-            $kat_id = $k['ust_id'];
+            array_unshift($yol, '<a href="kategori.php?slug='.htmlspecialchars($k['slug']).'" style="color: #27ae60; text-decoration: none; font-weight: 700;">'.htmlspecialchars($k['adi']).'</a>');
+            $kat_id = (int)$k['ust_id'];
         } else { break; }
     }
     return implode(' <span style="color: #cbd5e0; margin: 0 5px;">&gt;</span> ', $yol);
 }
 
 // İSİM MASKELEME
-$gorunur_isim = htmlspecialchars($ilan['ad_soyad'] ?? '');
+$gorunur_isim = htmlspecialchars($ilan['ad_soyad'] ?? 'İlan Sahibi');
 if(($ilan['isim_gizle'] ?? 0) == 1) {
-    $parca = explode(" ", $gorunur_isim);
+    $parca = explode(" ", trim($gorunur_isim));
     $ad = $parca[0];
     $soyad = end($parca);
-    $gorunur_isim = $ad . " " . mb_substr($soyad, 0, 1, 'UTF-8') . ".";
+    $gorunur_isim = htmlspecialchars($ad) . " " . mb_substr(htmlspecialchars($soyad), 0, 1, 'UTF-8') . ".";
 }
 
-// GALERİ
+// GALERİ (uploads/ilanlar/ Standartına Çevrildi)
 $resimlerSorgu = $db->prepare("SELECT * FROM ilan_resimleri WHERE ilan_id = ? ORDER BY ana_resim DESC");
 $resimlerSorgu->execute([$id]);
-$galeri = $resimlerSorgu->fetchAll();
-$ana_resim = (count($galeri) > 0) ? URL."/yuklemeler/ilanlar/".$galeri[0]['dosya_adi'] : URL."/dosyalar/resim/yok.png";
+$galeri = $resimlerSorgu->fetchAll(PDO::FETCH_ASSOC);
 
-// TEKNİK ÖZELLİKLER
-$dinamik_ozellikler = $db->query("SELECT ot.ozellik_adi, ot.birim, iov.deger 
-                                  FROM ilan_ozellik_verileri iov 
-                                  INNER JOIN ozellik_tanimlari ot ON iov.ozellik_id = ot.id 
-                                  WHERE iov.ilan_id = $id AND iov.deger != ''")->fetchAll(PDO::FETCH_ASSOC);
+if (count($galeri) > 0 && file_exists("uploads/ilanlar/" . $galeri[0]['dosya_adi'])) {
+    $ana_resim = URL . "/uploads/ilanlar/" . $galeri[0]['dosya_adi'];
+} else {
+    $ana_resim = URL . "/dosyalar/resim/yok.png";
+}
+
+// TEKNİK ÖZELLİKLER (Güvenli Prepare Sorgusu)
+$ozellikSorgu = $db->prepare("SELECT ot.ozellik_adi, ot.birim, iov.deger 
+                              FROM ilan_ozellik_verileri iov 
+                              INNER JOIN ozellik_tanimlari ot ON iov.ozellik_id = ot.id 
+                              WHERE iov.ilan_id = ? AND iov.deger != ''");
+$ozellikSorgu->execute([$id]);
+$dinamik_ozellikler = $ozellikSorgu->fetchAll(PDO::FETCH_ASSOC);
 
 $satici_etiket = ['Uretici'=>'Üreticiden','Bayi'=>'Bayiden','Fabrika'=>'Fabrikadan','Toptanci'=>'Toptancıdan'][$ilan['satici_tipi']] ?? 'Üreticiden';
+$sehir_adi = !empty($ilan['il_adi']) ? $ilan['il_adi'] : (!empty($ilan['il']) ? $ilan['il'] : 'Belirtilmedi');
+$ilce_adi = !empty($ilan['ilce_adi']) ? $ilan['ilce_adi'] : (!empty($ilan['ilce']) ? $ilan['ilce'] : '');
 ?>
 
 <style>
@@ -124,11 +140,13 @@ $satici_etiket = ['Uretici'=>'Üreticiden','Bayi'=>'Bayiden','Fabrika'=>'Fabrika
             </h1>
             
             <div style="background: #fff; padding: 15px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); border: 1px solid var(--p-border);">
-                <img src="<?php echo $ana_resim; ?>" id="bigImg" style="width: 100%; height: 550px; object-fit: contain; border-radius: 15px; background: #fcfcfc;">
+                <img src="<?php echo htmlspecialchars($ana_resim); ?>" id="bigImg" style="width: 100%; height: 550px; object-fit: contain; border-radius: 15px; background: #fcfcfc;">
                 
                 <div style="display: flex; gap: 10px; margin-top: 15px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch;">
-                    <?php foreach($galeri as $f): ?>
-                        <img src="<?php echo URL."/yuklemeler/ilanlar/".$f['dosya_adi']; ?>" 
+                    <?php foreach($galeri as $f): 
+                        $thumb = file_exists("uploads/ilanlar/" . $f['dosya_adi']) ? URL . "/uploads/ilanlar/" . $f['dosya_adi'] : URL . "/dosyalar/resim/yok.png";
+                    ?>
+                        <img src="<?php echo htmlspecialchars($thumb); ?>" 
                              class="thumb-img"
                              onclick="document.getElementById('bigImg').src=this.src" 
                              style="width: 110px; height: 80px; object-fit: cover; cursor: pointer; border-radius: 12px; border: 2px solid #f1f5f9; flex-shrink: 0;">
@@ -170,33 +188,38 @@ $satici_etiket = ['Uretici'=>'Üreticiden','Bayi'=>'Bayiden','Fabrika'=>'Fabrika
 
                 <div style="padding: 20px;">
                     <div class="istatistik-kutusu">
-                        <div class="stat-row">🔥 Bugün <b><?php echo $bugun_izlenme; ?></b> inceleme</div>
-                        <div class="stat-row">📅 Toplam <b><?php echo $ilan['goruntulenme_sayisi']; ?></b> ziyaret</div>
+                        <div class="stat-row">🔥 Bugün <b><?php echo (int)$bugun_izlenme; ?></b> inceleme</div>
+                        <div class="stat-row">📅 Toplam <b><?php echo (int)($ilan['goruntulenme_sayisi'] ?? 0); ?></b> ziyaret</div>
                     </div>
 
                     <ul class="detay-liste">
-                        <li><span class="detay-label">İlan No</span><span class="detay-val" style="color:#e67e22;">#<?php echo $ilan['ilan_no'] ?? $id; ?></span></li>
+                        <li><span class="detay-label">İlan No</span><span class="detay-val" style="color:#e67e22;">#<?php echo htmlspecialchars($ilan['ilan_no'] ?? $id); ?></span></li>
                         
                         <?php if(!empty($dinamik_ozellikler)): foreach($dinamik_ozellikler as $oz): ?>
-                            <li><span class="detay-label"><?php echo htmlspecialchars($oz['ozellik_adi']); ?></span><span class="detay-val"><?php echo htmlspecialchars($oz['deger']); ?> <?php echo htmlspecialchars($oz['birim']); ?></span></li>
+                            <li><span class="detay-label"><?php echo htmlspecialchars($oz['ozellik_adi']); ?></span><span class="detay-val"><?php echo htmlspecialchars($oz['deger']); ?> <?php echo htmlspecialchars($oz['birim'] ?? ''); ?></span></li>
                         <?php endforeach; endif; ?>
 
                         <li style="border-top: 2px solid #f1f5f9; margin-top: 10px; padding-top: 10px;">
                             <span class="detay-label">📍 Konum</span>
-                            <span class="detay-val"><?php echo $ilan['il_adi']; ?> / <?php echo $ilan['ilce_adi']; ?></span>
+                            <span class="detay-val"><?php echo htmlspecialchars($sehir_adi); ?><?php echo !empty($ilce_adi) ? ' / ' . htmlspecialchars($ilce_adi) : ''; ?></span>
                         </li>
                     </ul>
 
                     <div style="margin-top: 25px;">
-                        <?php if($ilan['iletisim_tercihi'] != 'sadece_mesaj'): ?>
-                            <a href="tel:<?php echo $ilan['telefon']; ?>" style="display: block; width: 100%; padding: 15px; background: var(--p-green); color: #fff; text-align: center; text-decoration: none; border-radius: 12px; font-weight: 900; font-size: 18px; box-shadow: 0 5px 0 #219150;">📞 ARA: <?php echo $ilan['telefon']; ?></a>
+                        <?php if(($ilan['iletisim_tercihi'] ?? '') != 'sadece_mesaj' && !empty($ilan['telefon'])): ?>
+                            <a href="tel:<?php echo htmlspecialchars($ilan['telefon']); ?>" style="display: block; width: 100%; padding: 15px; background: var(--p-green); color: #fff; text-align: center; text-decoration: none; border-radius: 12px; font-weight: 900; font-size: 18px; box-shadow: 0 5px 0 #219150;">📞 ARA: <?php echo htmlspecialchars($ilan['telefon']); ?></a>
                         <?php endif; ?>
                         
                         <div style="margin-top: 15px; display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid #eee;">
-                            <img src="<?php echo !empty($ilan['profil_foto']) ? (filter_var($ilan['profil_foto'], FILTER_VALIDATE_URL) ? $ilan['profil_foto'] : URL.'/yuklemeler/profil/'.$ilan['profil_foto']) : URL.'/dosyalar/resim/avatar.png'; ?>" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;">
+                            <?php 
+                            $profil_resim = !empty($ilan['profil_foto']) 
+                                ? (filter_var($ilan['profil_foto'], FILTER_VALIDATE_URL) ? $ilan['profil_foto'] : URL . '/uploads/profil/' . $ilan['profil_foto']) 
+                                : URL . '/dosyalar/resim/avatar.png';
+                            ?>
+                            <img src="<?php echo htmlspecialchars($profil_resim); ?>" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;">
                             <div>
                                 <div style="font-weight: 800; color: var(--p-dark); font-size: 14px;"><?php echo $gorunur_isim; ?></div>
-                                <div style="font-size: 11px; color: #a0aec0;"><?php echo $satici_etiket; ?></div>
+                                <div style="font-size: 11px; color: #a0aec0;"><?php echo htmlspecialchars($satici_etiket); ?></div>
                             </div>
                         </div>
 
@@ -218,7 +241,7 @@ $satici_etiket = ['Uretici'=>'Üreticiden','Bayi'=>'Bayiden','Fabrika'=>'Fabrika
     <div class="sikayet-content">
         <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center; font-size:18px;">📢 Şikayet Bildir <span onclick="sikayetKapat()" style="cursor:pointer; font-size:24px;">&times;</span></h3>
         <form id="sikayetForm">
-            <input type="hidden" name="ilan_id" value="<?php echo $id; ?>">
+            <input type="hidden" name="ilan_id" value="<?php echo (int)$id; ?>">
             <label class="sikayet-option"><input type="radio" name="neden" value="Fiyat Yanıltıcı" required> 💰 Fiyat Yanıltıcı</label>
             <label class="sikayet-option"><input type="radio" name="neden" value="Sahte İlan"> 🚫 Sahte / Dolandırıcı</label>
             <label class="sikayet-option"><input type="radio" name="neden" value="Diğer"> 📝 Diğer</label>
@@ -237,12 +260,14 @@ function favoriIslem(ilanID) {
         return;
     <?php endif; ?>
     $.post('islem/favori-islem.php', {ilan_id: ilanID}, function(response){
-        const res = JSON.parse(response);
-        if(res.durum == 'eklendi') {
-            $('#favBtn').addClass('aktif').find('#favIkon').text('❤️'); $('#favBtn').find('#favMetin').text('Favori');
-        } else {
-            $('#favBtn').removeClass('aktif').find('#favIkon').text('🤍'); $('#favBtn').find('#favMetin').text('Ekle');
-        }
+        try {
+            const res = typeof response === 'object' ? response : JSON.parse(response);
+            if(res.durum == 'eklendi') {
+                $('#favBtn').addClass('aktif').find('#favIkon').text('❤️'); $('#favBtn').find('#favMetin').text('Favori');
+            } else {
+                $('#favBtn').removeClass('aktif').find('#favIkon').text('🤍'); $('#favBtn').find('#favMetin').text('Ekle');
+            }
+        } catch(e) { console.error("Ayrıştırma hatası:", response); }
     });
 }
 function sikayetAc() {
@@ -257,11 +282,13 @@ function sikayetGonder() {
     const form = $('#sikayetForm');
     if(!$('input[name="neden"]:checked').val()){ Swal.fire('Hata', 'Neden seçin.', 'error'); return; }
     $.post('islem/sikayet-et.php', form.serialize(), function(r){
-        const res = JSON.parse(r);
-        if(res.durum == 'basarili'){
-            sikayetKapat();
-            Swal.fire('Tamam', 'İnceleme başlatıldı.', 'success');
-        }
+        try {
+            const res = typeof r === 'object' ? r : JSON.parse(r);
+            if(res.durum == 'basarili'){
+                sikayetKapat();
+                Swal.fire('Tamam', 'İnceleme başlatıldı.', 'success');
+            }
+        } catch(e) { console.error("Ayrıştırma hatası:", r); }
     });
 }
 </script>

@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            $dizin = __DIR__ . "/../yuklemeler/ilanlar/";
+            $dizin = __DIR__ . "/../uploads/ilanlar/";
 
             // 5. RESİM SİLME (Checkbox: silinecek_resimler[]) - Dizin Yolu Düzeltildi
             if (isset($_POST['silinecek_resimler']) && is_array($_POST['silinecek_resimler'])) {

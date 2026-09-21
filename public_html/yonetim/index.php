@@ -23,10 +23,10 @@ $son_ilanlar = $db->query("SELECT i.*, k.adi as kat_adi, u.ad_soyad
                            LEFT JOIN uyeler u ON i.uye_id = u.id 
                            ORDER BY (i.durum = 'beklemede') DESC, i.id DESC LIMIT 5")->fetchAll();
 
-// 🛡️ SON ŞİKAYETLER
+// 🛡️ SON ŞİKAYETLER (LEFT JOIN ile güvenli hale getirildi)
 $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as ilan_baslik 
                               FROM sikayetler s 
-                              JOIN uyeler u ON s.sikayetci_id = u.id 
+                              LEFT JOIN uyeler u ON s.sikayetci_id = u.id 
                               LEFT JOIN ilanlar i ON s.ilan_id = i.id 
                               ORDER BY s.id DESC LIMIT 5")->fetchAll();
 ?>
@@ -88,6 +88,7 @@ $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as i
         
         <hr style="border: 0; border-top: 1px solid #2d3748; margin: 15px 0;">
         <a href="yedekleme.php">🗄️ Sistem Yedekleme</a>
+        <a href="guncelleme.php">🚀 Sistem Güncelleme</a>
         <a href="ayarlar.php">⚙️ Genel Ayarlar</a>
         <a href="cikis.php" style="color: #fc8181;">🚪 Güvenli Çıkış</a>
     </nav>
@@ -125,6 +126,7 @@ $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as i
                 <thead>
                     <tr>
                         <th>İlan Başlığı</th>
+                        <th>Kategori</th>
                         <th>Durum</th>
                         <th style="text-align: right;">Git</th>
                     </tr>
@@ -132,7 +134,8 @@ $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as i
                 <tbody>
                     <?php foreach($son_ilanlar as $ilan): ?>
                     <tr>
-                        <td><strong><?php echo mb_substr(htmlspecialchars($ilan['baslik']),0,40); ?>...</strong></td>
+                        <td><strong><?php echo mb_substr(htmlspecialchars($ilan['baslik']),0,35); ?>...</strong></td>
+                        <td><small style="color:#718096; font-weight:600;"><?php echo htmlspecialchars($ilan['kat_adi'] ?? 'Genel'); ?></small></td>
                         <td>
                             <span class="badge <?php echo ($ilan['durum'] == 'beklemede') ? 'badge-pending' : 'badge-active'; ?>">
                                 <?php echo ($ilan['durum'] == 'beklemede') ? 'ONAY BEKLİYOR' : 'YAYINDA'; ?>
@@ -141,6 +144,9 @@ $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as i
                         <td style="text-align: right;"><a href="ilanlar.php?id=<?php echo $ilan['id']; ?>" style="text-decoration: none;">🔍</a></td>
                     </tr>
                     <?php endforeach; ?>
+                    <?php if(empty($son_ilanlar)): ?>
+                        <tr><td colspan="4" style="text-align:center; color:#cbd5e0; padding:20px;">Henüz ilan bulunmuyor.</td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -158,7 +164,7 @@ $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as i
                 <tbody>
                     <?php foreach($son_sikayetler as $s): ?>
                     <tr>
-                        <td><div style="font-weight:700;"><?php echo htmlspecialchars($s['sikayetci']); ?></div></td>
+                        <td><div style="font-weight:700;"><?php echo htmlspecialchars($s['sikayetci'] ?? 'Anonim / Silinmiş Üye'); ?></div></td>
                         <td><span class="badge badge-red">ACİL</span></td>
                         <td style="text-align: right;"><a href="sikayetler.php" style="text-decoration: none;">🚨</a></td>
                     </tr>
@@ -174,6 +180,7 @@ $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as i
     <div class="data-card" style="margin-top: 25px;">
         <h3 style="margin: 0; color: #2d3748; font-size: 16px;">⚡ Hızlı İşlemler</h3>
         <div class="quick-action-grid">
+            <a href="guncelleme.php" class="action-btn" style="border-color:var(--admin-blue); color:var(--admin-blue);">🚀 Sistem Güncelleme</a>
             <a href="yedekleme.php" class="action-btn">🗄️ Yedekleme Paneli</a>
             <a href="islem/yedek-al.php?tip=sql" class="action-btn">💾 Hızlı SQL Yedeği</a>
             <a href="ziyaretciler.php" class="action-btn">📊 Trafik Raporu</a>

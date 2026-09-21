@@ -160,7 +160,7 @@ function denetle(data) {
     document.getElementById('form-scid').value = data.sikayetci_id;
     
     document.getElementById('d-baslik').innerText = data.baslik;
-    document.getElementById('d-resim').src = "../yuklemeler/ilanlar/" + (data.kapak || 'yok.png');
+    document.getElementById('d-resim').src = "../uploads/ilanlar/" + (data.kapak || 'yok.png');
     document.getElementById('d-aciklama').innerText = data.aciklama;
     document.getElementById('d-sikayet-mesaj').innerText = data.mesaj;
     

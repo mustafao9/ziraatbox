@@ -8,7 +8,7 @@ $klasorler = [
     'sistem',
     'parcalar',
     'yuklemeler',
-    'yuklemeler/ilanlar',
+    'uploads/ilanlar',
     'yuklemeler/profil',
     'islem',
     'dosyalar',

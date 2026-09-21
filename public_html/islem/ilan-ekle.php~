@@ -1,13 +1,13 @@
 <?php
 /**
- * ZiraatBox - İlan Ekleme Motoru v4.2 (WebP, Thumbnail & SQL Şema Onarımlı)
+ * ZiraatBox - İlan Ekleme Motoru v4.1 (WebP, Thumbnail & ENUM Doğrulaması)
  * Mustafa Satılmış - İncirliova / Aydın
  */
 
 ob_start();
 require_once __DIR__ . "/../sistem/ayar.php";
 
-$app_url = defined('URL') ? URL : (function_exists('env') ? env('APP_URL', 'http://localhost/ziraatbox/public_html') : 'http://localhost/ziraatbox/public_html');
+$app_url = function_exists('env') ? env('APP_URL', 'http://ziraatbox.com') : 'http://ziraatbox.com';
 
 /**
  * 🔗 MODERN SEO URL FONKSİYONU
@@ -163,10 +163,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fiyat_ham   = $_POST['fiyat'] ?? '0';
     $fiyat       = (float)str_replace(['.', ','], ['', '.'], $fiyat_ham); 
     
-    // Konum Verileri (SQL tablosundaki il, ilce, mahalle sütunlarıyla tam uyum)
-    $il          = trim($_POST['il_id'] ?? '');
-    $ilce        = trim($_POST['ilce_id'] ?? '');
-    $mahalle     = !empty($_POST['mahalle_id']) ? trim($_POST['mahalle_id']) : null;
+    $il_id       = (int)($_POST['il_id'] ?? 0);
+    $ilce_id     = (int)($_POST['ilce_id'] ?? 0);
+    $mahalle_id  = (int)($_POST['mahalle_id'] ?? 0);
     $aciklama    = trim($_POST['aciklama'] ?? '');
     
     // 🚀 GİZLİLİK VE İLETİŞİM AYARLARI (ENUM DOĞRULAMASI)
@@ -198,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ozel_ilan_no = $yil . $yilun_gunu . $saat_dakika . $saniye;
 
     try {
-        // 2. VERİTABANINA ANA KAYIT (SQL Şemasına Tam Uyumlu Prepared Statement)
+        // 2. VERİTABANINA ANA KAYIT (PDO Prepared Statement)
         $ilan_ekle = $db->prepare("INSERT INTO ilanlar SET 
             ilan_no          = ?, 
             uye_id           = ?, 
@@ -219,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $kontrol = $ilan_ekle->execute([
             $ozel_ilan_no, $uye_id, $kategori_id, $satici_tipi, $baslik, $slug, $aciklama, $fiyat, 
-            $il, $ilce, $mahalle, $iletisim_tercihi, $isim_gizle, $ip_adresi, $user_agent
+            $il_id, $ilce_id, $mahalle_id, $iletisim_tercihi, $isim_gizle, $ip_adresi, $user_agent
         ]);
 
         if ($kontrol) {
@@ -235,11 +234,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // 📸 RESİMLERİ WEBP & THUMBNAIL İLE GÜVENLİ YÜKLE (uploads/ilanlar Standartı)
+            // 📸 RESİMLERİ WEBP & THUMBNAIL İLE GÜVENLİ YÜKLE
             if (isset($_FILES['ilan_resimleri']['name'][0]) && !empty($_FILES['ilan_resimleri']['name'][0])) {
-                $hedef_yol = dirname(__DIR__) . "/uploads/ilanlar/";
-                $thumb_yol = dirname(__DIR__) . "/uploads/ilanlar/thumbs/";
-                
+                $hedef_yol = __DIR__ . "/../uploads/ilanlar/";
+                $thumb_yol = __DIR__ . "/../uploads/ilanlar/thumbs/";
                 if (!file_exists($hedef_yol)) { 
                     @mkdir($hedef_yol, 0755, true); 
                 }
@@ -267,7 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $ana_resim_tam_yol = $hedef_yol . $yeni_webp_adi;
                                 thumbOlustur($ana_resim_tam_yol, $thumb_yol, 400, 300, 75);
 
-                                // 3. Veritabanına Kaydet (ilan_resimleri tablosuna uyumlu)
+                                // 3. Veritabanına Kaydet
                                 $ana_resim_durumu = ($i == 0) ? 1 : 0;
                                 $db->prepare("INSERT INTO ilan_resimleri (ilan_id, dosya_adi, ana_resim) VALUES (?, ?, ?)")
                                    ->execute([$last_id, $yeni_webp_adi, $ana_resim_durumu]);

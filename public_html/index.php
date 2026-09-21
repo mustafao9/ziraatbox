@@ -1,5 +1,5 @@
 <?php
-// Hata raporlamayı aç
+// Hata raporlama
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL); 
@@ -7,20 +7,39 @@ require_once "parcalar/ust.php";
 
 /**
  * ZiraatBox - PLUS PREMIUM v21.5
- * Mobil: Resim Kesmeden Liste Görünümü
+ * Veritabanı Şemasına %100 Uyumlu, Performans & Güvenlik Onarımlı
  */
 
-// 1. REKÜRSİF KATEGORİ HAVUZU (Performans İyileştirmeli)
-if (!function_exists('altKategoriIDleriniGetir')) {
-    function altKategoriIDleriniGetir($db, $ust_id) {
+// 1. TEK SORGUDA TÜM KATEGORİ HARİTASINI BELLEĞE ALMA (N+1 Sorgu Engellendi)
+if (!function_exists('kategoriHaritasiGetir')) {
+    function kategoriHaritasiGetir($db) {
+        static $harita = null;
+        if ($harita === null) {
+            $sorgu = $db->query("SELECT id, ust_id, adi, slug, sira FROM kategoriler WHERE aktif = 1 ORDER BY sira ASC");
+            $tum_katlar = $sorgu->fetchAll(PDO::FETCH_ASSOC);
+            $harita = ['tum' => [], 'ust_baglanti' => []];
+            foreach ($tum_katlar as $k) {
+                $harita['tum'][$k['id']] = $k;
+                $harita['ust_baglanti'][$k['ust_id']][] = $k['id'];
+            }
+        }
+        return $harita;
+    }
+}
+
+if (!function_exists('altKategoriIDleriniGetirHizli')) {
+    function altKategoriIDleriniGetirHizli($harita, $ust_id) {
         $ids = [(int)$ust_id];
-        $sorgu = $db->prepare("SELECT id FROM kategoriler WHERE ust_id = ? AND aktif = 1");
-        $sorgu->execute([$ust_id]);
-        $altlar = $sorgu->fetchAll(PDO::FETCH_COLUMN);
-        foreach ($altlar as $id) { $ids = array_merge($ids, altKategoriIDleriniGetir($db, $id)); }
+        if (isset($harita['ust_baglanti'][$ust_id])) {
+            foreach ($harita['ust_baglanti'][$ust_id] as $alt_id) {
+                $ids = array_merge($ids, altKategoriIDleriniGetirHizli($harita, $alt_id));
+            }
+        }
         return array_unique($ids);
     }
 }
+
+$kat_haritasi = kategoriHaritasiGetir($db);
 ?>
 
 <style>
@@ -74,7 +93,7 @@ if (!function_exists('altKategoriIDleriniGetir')) {
         margin-bottom: 20px; border-radius: 4px;
     }
 
-    /* 🖥️ MASAÜSTÜ GRID (Grid'de Resimler Kesilebilir/Cover Olabilir Hoş Durur) */
+    /* 🖥️ MASAÜSTÜ GRID */
     @media (min-width: 993px) {
         .plus-ilan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
         .plus-card { background: #fff; border: 1px solid var(--z-border); padding: 8px; transition: 0.2s; border-radius: 8px; text-decoration: none; color: inherit; display: flex; flex-direction: column; }
@@ -86,7 +105,7 @@ if (!function_exists('altKategoriIDleriniGetir')) {
         .mobile-category-list { display: none; }
     }
 
-    /* 📱 MOBİL LİSTE (RESİM KESMEYEN ÖZEL AYAR) */
+    /* 📱 MOBİL LİSTE */
     @media (max-width: 992px) {
         .plus-full-wrapper { grid-template-columns: 1fr; }
         .plus-sidebar { display: none; }
@@ -102,12 +121,11 @@ if (!function_exists('altKategoriIDleriniGetir')) {
             display: flex; flex-direction: row; padding: 12px; border: none; border-bottom: 1px solid #f0f0f0; 
             border-radius: 0; align-items: center; gap: 12px; background: #fff; text-decoration: none; color: inherit;
         }
-        /* 🎯 RESİM BURADA KÜÇÜLTÜLÜR (KESİLMEZ) */
         .plus-img { 
             width: 100px; 
             height: 80px; 
             flex-shrink: 0; 
-            background: #f8fafc; /* Boş kalan yerler için hafif renk */
+            background: #f8fafc; 
             border-radius: 6px; 
             overflow: hidden;
             border: 1px solid #f0f0f0;
@@ -115,7 +133,7 @@ if (!function_exists('altKategoriIDleriniGetir')) {
         .plus-img img { 
             width: 100%; 
             height: 100%; 
-            object-fit: contain; /* 🚀 Resmi kesmez, kutuya sığdırır */
+            object-fit: contain; 
         }
         
         .plus-card-right { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -132,16 +150,21 @@ if (!function_exists('altKategoriIDleriniGetir')) {
         <h3 class="sidebar-section-title">Hızlı Gezinti</h3>
         <ul class="plus-side-list">
             <?php
-            $side_kat = $db->query("SELECT * FROM kategoriler WHERE ust_id = 0 AND aktif = 1 ORDER BY sira ASC LIMIT 15")->fetchAll();
+            $side_kat_ids = $kat_haritasi['ust_baglanti'][0] ?? [];
+            $side_kat = [];
+            foreach (array_slice($side_kat_ids, 0, 15) as $kid) {
+                $side_kat[] = $kat_haritasi['tum'][$kid];
+            }
+
             foreach($side_kat as $sk):
-                $kat_havuzu = altKategoriIDleriniGetir($db, $sk['id']);
+                $kat_havuzu = altKategoriIDleriniGetirHizli($kat_haritasi, $sk['id']);
                 $in_q = implode(',', array_fill(0, count($kat_havuzu), '?'));
                 $say_sorgu = $db->prepare("SELECT COUNT(id) FROM ilanlar WHERE kategori_id IN ($in_q) AND durum = 'aktif'");
                 $say_sorgu->execute($kat_havuzu);
                 $sayi = $say_sorgu->fetchColumn();
             ?>
             <li>
-                <a href="kategori.php?slug=<?php echo $sk['slug']; ?>">
+                <a href="kategori.php?slug=<?php echo htmlspecialchars($sk['slug']); ?>">
                     <span><?php echo htmlspecialchars($sk['adi']); ?></span>
                     <span class="plus-count">(<?php echo $sayi; ?>)</span>
                 </a>
@@ -157,16 +180,17 @@ if (!function_exists('altKategoriIDleriniGetir')) {
                     <select name="kategori">
                         <option value="0">Tümü</option>
                         <?php 
-                        function hiyerarsikFiltreListesi($db, $ust_id = 0, $derinlik = 0) {
-                            $sorgu = $db->prepare("SELECT id, adi FROM kategoriler WHERE ust_id = ? AND aktif = 1 ORDER BY sira ASC");
-                            $sorgu->execute([$ust_id]);
-                            foreach ($sorgu->fetchAll() as $kat) {
-                                $prefix = str_repeat('&nbsp;', $derinlik * 3) . ($derinlik == 0 ? '' : '└ ');
-                                echo '<option value="'.$kat['id'].'">'.$prefix.$kat['adi'].'</option>';
-                                hiyerarsikFiltreListesi($db, $kat['id'], $derinlik + 1);
+                        function hiyerarsikFiltreListesiOptimum($harita, $ust_id = 0, $derinlik = 0) {
+                            if (isset($harita['ust_baglanti'][$ust_id])) {
+                                foreach ($harita['ust_baglanti'][$ust_id] as $kat_id) {
+                                    $kat = $harita['tum'][$kat_id];
+                                    $prefix = str_repeat('&nbsp;', $derinlik * 3) . ($derinlik == 0 ? '' : '└ ');
+                                    echo '<option value="'.(int)$kat['id'].'">'.$prefix.htmlspecialchars($kat['adi']).'</option>';
+                                    hiyerarsikFiltreListesiOptimum($harita, $kat['id'], $derinlik + 1);
+                                }
                             }
                         }
-                        hiyerarsikFiltreListesi($db); 
+                        hiyerarsikFiltreListesiOptimum($kat_haritasi); 
                         ?>
                     </select>
                 </div>
@@ -175,8 +199,8 @@ if (!function_exists('altKategoriIDleriniGetir')) {
                     <select name="il">
                         <option value="0">Tüm Türkiye</option>
                         <?php 
-                        $iller = $db->query("SELECT * FROM iller ORDER BY il_adi ASC")->fetchAll();
-                        foreach($iller as $il) echo '<option value="'.$il['id'].'">'.$il['il_adi'].'</option>';
+                        $iller = $db->query("SELECT id, il_adi FROM iller ORDER BY il_adi ASC")->fetchAll(PDO::FETCH_ASSOC);
+                        foreach($iller as $il) echo '<option value="'.(int)$il['id'].'">'.htmlspecialchars($il['il_adi']).'</option>';
                         ?>
                     </select>
                 </div>
@@ -189,7 +213,7 @@ if (!function_exists('altKategoriIDleriniGetir')) {
         
         <div class="mobile-category-list">
             <?php foreach(array_slice($side_kat, 0, 6) as $sk): ?>
-            <a href="kategori.php?slug=<?php echo $sk['slug']; ?>" class="mobile-cat-item">
+            <a href="kategori.php?slug=<?php echo htmlspecialchars($sk['slug']); ?>" class="mobile-cat-item">
                 <div class="cat-icon-circle"><i class="fa-solid fa-layer-group"></i></div>
                 <div class="cat-name-text"><?php echo htmlspecialchars($sk['adi']); ?></div>
                 <div class="cat-arrow-right">›</div>
@@ -209,30 +233,38 @@ if (!function_exists('altKategoriIDleriniGetir')) {
 
         <div class="plus-ilan-grid">
             <?php
+            // SQL Şemasına Tam Uyumlu Sorgu (created_at ve il tablosu eşleşmesi)
             $ilanlar = $db->query("
-                SELECT i.*, il.il_adi, 
+                SELECT i.id, i.baslik, i.fiyat, i.created_at, i.il as il_id, il.il_adi, 
                 (SELECT dosya_adi FROM ilan_resimleri WHERE ilan_id = i.id ORDER BY ana_resim DESC LIMIT 1) as ana_resim 
                 FROM ilanlar i 
-                LEFT JOIN iller il ON i.il = il.id 
+                LEFT JOIN iller il ON (i.il = il.id OR i.il = il.il_adi) 
                 WHERE i.durum = 'aktif' 
                 ORDER BY i.id DESC LIMIT 48
-            ")->fetchAll();
+            ")->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($ilanlar as $ilan):
-                $resim = (!empty($ilan['ana_resim'])) ? "yuklemeler/ilanlar/" . $ilan['ana_resim'] : "dosyalar/resim/yok.png";
-                $tarih_ham = $ilan['eklenme_tarihi'] ?? $ilan['tarih'] ?? date('Y-m-d');
+                // Standart resim yolu (uploads/ilanlar/)
+                if (!empty($ilan['ana_resim']) && file_exists("uploads/ilanlar/" . $ilan['ana_resim'])) {
+                    $resim = "uploads/ilanlar/" . $ilan['ana_resim'];
+                } else {
+                    $resim = "dosyalar/resim/yok.png";
+                }
+
+                $tarih_ham = $ilan['created_at'] ?? date('Y-m-d');
                 $tarih = date("d.m.Y", strtotime($tarih_ham));
+                $sehir_adi = !empty($ilan['il_adi']) ? $ilan['il_adi'] : (!empty($ilan['il_id']) ? $ilan['il_id'] : 'Belirtilmedi');
             ?>
-            <a href="ilan-detay.php?id=<?php echo $ilan['id']; ?>" class="plus-card">
+            <a href="ilan-detay.php?id=<?php echo (int)$ilan['id']; ?>" class="plus-card">
                 <div class="plus-img">
-                    <img src="<?php echo $resim; ?>" alt="<?php echo htmlspecialchars($ilan['baslik']); ?>" loading="lazy">
+                    <img src="<?php echo htmlspecialchars($resim); ?>" alt="<?php echo htmlspecialchars($ilan['baslik']); ?>" loading="lazy">
                 </div>
                 
                 <div class="plus-card-right"> 
                     <div class="plus-fiyat"><?php echo number_format($ilan['fiyat'], 0, ',', '.'); ?> TL</div>
                     <h4 class="plus-baslik"><?php echo htmlspecialchars($ilan['baslik']); ?></h4>
                     <div class="plus-loc">
-                        <span>📍 <?php echo $ilan['il_adi']; ?></span>
+                        <span>📍 <?php echo htmlspecialchars($sehir_adi); ?></span>
                         <span class="m-date" style="display:none;">📅 <?php echo $tarih; ?></span>
                     </div>
                 </div>
