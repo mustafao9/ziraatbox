@@ -52,10 +52,12 @@ try {
 
         $repo = "mustafao9/ziraatbox";
 
+        // ZipArchive kontrolü
         if (!class_exists('ZipArchive')) {
             throw new Exception("ZipArchive eklentisi yok.");
         }
 
+        // Güncelleme URL'si
         if ($force) {
             $url = "https://github.com/" . $repo . "/archive/refs/heads/main.zip";
         } else {
@@ -114,17 +116,28 @@ try {
         if ($zip->open($tmp) === true) {
 
             $f_name = $zip->getNameIndex(0);
+            $yazilamayanlar = array();
+
+            // İlk klasör adındaki / karakterini garanti et
+            if (substr($f_name, -1) !== '/') {
+                $f_name .= '/';
+            }
 
             for ($i = 0; $i < $zip->numFiles; $i++) {
 
                 $name = $zip->getNameIndex($i);
-                $rel = substr($name, strlen($f_name));
 
-                if (empty($rel)) {
+                if ($name === false) {
                     continue;
                 }
 
-                // Korunacak klasör ve dosyalar
+                $rel = substr($name, strlen($f_name));
+
+                if ($rel === false || empty($rel)) {
+                    continue;
+                }
+
+                // Korunan dizinler ve dosyalar
                 if (
                     strpos($rel, 'uploads/') === 0 ||
                     $rel === '.env' ||
@@ -135,11 +148,14 @@ try {
 
                 $hedef = $root . '/' . ltrim($rel, '/');
 
-                // Klasör
+                // Klasör oluşturma
                 if (substr($name, -1) === '/') {
 
                     if (!is_dir($hedef)) {
-                        mkdir($hedef, 0755, true);
+                        if (!mkdir($hedef, 0755, true) && !is_dir($hedef)) {
+                            $yazilamayanlar[] = $rel;
+                            error_log("Klasor olusturulamadi: " . $hedef);
+                        }
                     }
 
                 } else {
@@ -147,24 +163,50 @@ try {
                     $d = dirname($hedef);
 
                     if (!is_dir($d)) {
-                        mkdir($d, 0755, true);
+                        if (!mkdir($d, 0755, true) && !is_dir($d)) {
+                            $yazilamayanlar[] = $rel;
+                            error_log("Klasor olusturulamadi: " . $d);
+                            continue;
+                        }
                     }
 
                     $icerik = $zip->getFromIndex($i);
 
                     if ($icerik !== false) {
-                        file_put_contents($hedef, $icerik);
+
+                        $yazildi = file_put_contents($hedef, $icerik);
+
+                        if ($yazildi === false) {
+                            $yazilamayanlar[] = $rel;
+                            error_log("Yazilamadi: " . $hedef);
+                        }
+                    } else {
+                        $yazilamayanlar[] = $rel;
+                        error_log("ZIP icerigi okunamadi: " . $name);
                     }
                 }
             }
 
             $zip->close();
 
+            // Geçici ZIP'i sil
             if (file_exists($tmp)) {
                 unlink($tmp);
             }
 
+            if (!empty($yazilamayanlar)) {
+                throw new Exception(
+                    count($yazilamayanlar) .
+                    " adet dosya yazilamadi (Izin hatasi)."
+                );
+            }
+
         } else {
+
+            if (file_exists($tmp)) {
+                unlink($tmp);
+            }
+
             throw new Exception("Zip acilamadi.");
         }
 
@@ -190,16 +232,20 @@ try {
 
         // Versiyon dosyasını oluştur
         $v_icerik = "<?php\n";
-
         $v_icerik .= "if (!defined('SISTEM_VERSIYON')) {\n";
         $v_icerik .= "    define('SISTEM_VERSIYON', '" . $versiyon . "');\n";
         $v_icerik .= "}\n";
 
-        file_put_contents(
-            $root . "/sistem/versiyon.php",
-            $v_icerik
-        );
+        if (
+            file_put_contents(
+                $root . "/sistem/versiyon.php",
+                $v_icerik
+            ) === false
+        ) {
+            throw new Exception("Versiyon dosyasi yazilamadi.");
+        }
 
+        // Güncelleme tamamlandı
         header(
             "Location: ../guncelleme.php?durum=guncellendi&v=" .
             urlencode($versiyon)
@@ -209,6 +255,15 @@ try {
     }
 
 } catch (Exception $ex) {
+
+    // Geçici ZIP kaldıysa temizle
+    if (isset($tmp) && file_exists($tmp)) {
+        @unlink($tmp);
+    }
+
+    error_log(
+        "Guncelleme hatasi: " . $ex->getMessage()
+    );
 
     $err = urlencode($ex->getMessage());
 
