@@ -1,5 +1,4 @@
 <?php
-
 $e_rapor = E_ALL & ~E_DEPRECATED & ~E_NOTICE;
 error_reporting($e_rapor);
 
@@ -12,7 +11,7 @@ $d1 = dirname($aktif);
 $d2 = dirname($d1);
 $root = dirname($d2);
 
-$yedekler = $d1 . "/yedekler/";
+$yedekler =$d1 . "/yedekler/";
 
 if (!is_dir($yedekler)) {
     mkdir($yedekler, 0755, true);
@@ -21,7 +20,7 @@ if (!is_dir($yedekler)) {
 ini_set('log_errors', '1');
 ini_set('error_log', $yedekler . 'guncelle_hata.log');
 
-$ayar = $root . "/sistem/ayar.php";
+$ayar =$root . "/sistem/ayar.php";
 
 if (file_exists($ayar)) {
     require_once $ayar;
@@ -38,13 +37,12 @@ if (!isset($_SESSION['admin_id'])) {
     die("Yetkisiz erisim.");
 }
 
-if (!isset($_SESSION['yetki']) || $_SESSION['yetki'] != 'admin') {
+if (!isset($_SESSION['yetki']) \vert{}\vert{}$_SESSION['yetki'] != 'admin') {
     die("Yetkisiz erisim.");
 }
 
-$islem = isset($_GET['islem']) ? $_GET['islem'] : '';
-$versiyon = isset($_GET['version']) ? $_GET['version'] : '1.0.6';
-$force = isset($_GET['force']) && $_GET['force'] == 1;
+$islem = isset($_GET['islem']) ? $_GET['islem'] : '';$versiyon = isset($_GET['version']) ?$_GET['version'] : '1.0.6';
+$force = isset($_GET['force']) &&$_GET['force'] == 1;
 
 try {
 
@@ -62,12 +60,12 @@ try {
             $url = "https://github.com/" . $repo . "/archive/refs/tags/v" . $versiyon . ".zip";
         }
 
-        $tmp = $yedekler . "update.zip";
+        $tmp =$yedekler . "update.zip";
 
         // GitHub'dan ZIP indir
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_URL,$url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_USERAGENT, 'ZiraatBox');
@@ -81,13 +79,13 @@ try {
         curl_close($ch);
 
         // Sürüm ZIP'i alınamazsa main branch'i dene
-        if ($code != 200 || empty($data)) {
+        if ($code != 200 \vert{}\vert{} empty($data)) {
 
             $url2 = "https://github.com/" . $repo . "/archive/refs/heads/main.zip";
 
             $ch = curl_init();
 
-            curl_setopt($ch, CURLOPT_URL, $url2);
+            curl_setopt($ch, CURLOPT_URL,$url2);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch, CURLOPT_USERAGENT, 'ZiraatBox');
@@ -104,7 +102,7 @@ try {
             throw new Exception("GitHub verisi alinamadi.");
         }
 
-        if (file_put_contents($tmp, $data) === false) {
+        if (file_put_contents($tmp,$data) === false) {
             throw new Exception("Tmp zip yazilamadi.");
         }
 
@@ -113,21 +111,19 @@ try {
 
         if ($zip->open($tmp) === true) {
 
-            $f_name = $zip->getNameIndex(0);
+            $f_name = $zip->getNameIndex(0);$yazilamayanlar = array();
 
             for ($i = 0; $i < $zip->numFiles; $i++) {
 
-                $name = $zip->getNameIndex($i);
-                $rel = substr($name, strlen($f_name));
+                $name =$zip->getNameIndex($i);$rel = substr($name, strlen($f_name));
 
                 if (empty($rel)) {
                     continue;
                 }
 
-                // Korunacak klasör ve dosyalar
+                // uploads/ standartına göre korunan dizinler ve dosyalar
                 if (
-                    strpos($rel, 'uploads/') === 0 ||
-                    $rel === '.env' ||
+                    strpos($rel, 'uploads/') === 0 \vert{}\vert{}$rel === '.env' ||
                     strpos($rel, 'yonetim/yedekler/') === 0
                 ) {
                     continue;
@@ -135,7 +131,7 @@ try {
 
                 $hedef = $root . '/' . ltrim($rel, '/');
 
-                // Klasör
+                // Klasör oluşturma
                 if (substr($name, -1) === '/') {
 
                     if (!is_dir($hedef)) {
@@ -152,8 +148,11 @@ try {
 
                     $icerik = $zip->getFromIndex($i);
 
-                    if ($icerik !== false) {
-                        file_put_contents($hedef, $icerik);
+                    if ($icerik !== false) {$yazildi = file_put_contents($hedef,$icerik);
+                        if ($yazildi === false) {
+                            $yazilamayanlar[] =$rel;
+                            error_log("Yazilamadi: " . $hedef);
+                        }
                     }
                 }
             }
@@ -162,6 +161,10 @@ try {
 
             if (file_exists($tmp)) {
                 unlink($tmp);
+            }
+
+            if (!empty($yazilamayanlar)) {
+                throw new Exception(count($yazilamayanlar) . " adet dosya yazilamadi (Izin hatasi).");
             }
 
         } else {
@@ -190,7 +193,6 @@ try {
 
         // Versiyon dosyasını oluştur
         $v_icerik = "<?php\n";
-
         $v_icerik .= "if (!defined('SISTEM_VERSIYON')) {\n";
         $v_icerik .= "    define('SISTEM_VERSIYON', '" . $versiyon . "');\n";
         $v_icerik .= "}\n";
