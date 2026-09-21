@@ -1,9 +1,1 @@
-# Direkt Web/Tarayıcı İndirmelerini Engelle
-<FilesMatch ".*">
-    Require all denied
-</FilesMatch>
-
-# PHP Scriptlerinin Erişimine İzin Ver
-<FilesMatch "\.(php)$">
-    Require all granted
-</FilesMatch>
+Deny from all

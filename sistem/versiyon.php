@@ -1,5 +1,5 @@
 <?php
 
-$surum = '1.0.13';
+$surum = '1.0.16';
 
 $versiyon = $surum;

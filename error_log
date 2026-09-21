@@ -984,3 +984,4 @@
 [20-Sep-2026 01:07:34 Europe/Istanbul] PHP Notice:  Undefined variable: is_bold in /home/ziraatbo/public_html/sistem/ayar.php on line 67
 [20-Sep-2026 01:41:06 Europe/Istanbul] PHP Warning:  Use of undefined constant RECAPTCHA_SITE_KEY - assumed 'RECAPTCHA_SITE_KEY' (this will throw an Error in a future version of PHP) in /home/ziraatbo/public_html/giris.php on line 56
 [20-Sep-2026 01:41:10 Europe/Istanbul] PHP Warning:  Use of undefined constant RECAPTCHA_SITE_KEY - assumed 'RECAPTCHA_SITE_KEY' (this will throw an Error in a future version of PHP) in /home/ziraatbo/public_html/giris.php on line 56
+[22-Sep-2026 01:21:24 Europe/Istanbul] PHP Warning:  Use of undefined constant RECAPTCHA_SITE_KEY - assumed 'RECAPTCHA_SITE_KEY' (this will throw an Error in a future version of PHP) in /home/ziraatbo/public_html/kayit.php on line 70
