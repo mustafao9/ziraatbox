@@ -22,7 +22,7 @@ if [ -z "$VERSION" ]; then
     # GitHub/Git üzerindeki en son etiketi bul (örn: v1.0.1)
     LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
     if [ -z "$LAST_TAG" ]; then
-        VERSION="1.0.0"
+        VERSION="1.0.1"
     else
         # Son sayısal kısmı 1 artır (1.0.1 -> 1.0.2)
         RAW_VER=${LAST_TAG#v}
@@ -38,7 +38,7 @@ TAG_NAME="v$VERSION"
 
 echo "--------------------------------------------------"
 echo "📦 Güncelleme ve Versiyonlama Başlatılıyor..."
-echo "📝 Mesaj  : $MESSAGE"
+echo "📝 Mesaj   : $MESSAGE"
 echo "🏷️  Versiyon: $TAG_NAME"
 echo "--------------------------------------------------"
 
