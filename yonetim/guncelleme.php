@@ -5,10 +5,12 @@ if(!isset($_SESSION['admin_id']) && (!isset($_SESSION['yetki']) || $_SESSION['ye
     header("Location: giris.php"); exit;
 }
 
-// Mevcut Sürüm Tespiti
-if (file_exists("../../sistem/versiyon.php")) {
-    include_once "../../sistem/versiyon.php";
+// 1. Mevcut Sürüm Tespiti (Kök Dizin Yol Düzeltmesi)
+$versiyon_dosyasi = dirname(__DIR__) . "/sistem/versiyon.php";
+if (file_exists($versiyon_dosyasi)) {
+    include_once $versiyon_dosyasi;
 }
+
 $mevcut_versiyon = defined('SISTEM_VERSIYON') ? SISTEM_VERSIYON : '1.0.0';
 
 $github_repo = "mustafao9/ziraatbox";
@@ -16,7 +18,7 @@ $guncelleme_var = false;
 $son_versiyon = $mevcut_versiyon;
 $release_notlari = "";
 
-// GitHub Tags API Kontrolü
+// 2. GitHub Tags API Kontrolü
 $ch_tag = curl_init();
 curl_setopt($ch_tag, CURLOPT_URL, "https://api.github.com/repos/$github_repo/tags");
 curl_setopt($ch_tag, CURLOPT_RETURNTRANSFER, 1);
@@ -39,7 +41,7 @@ if (version_compare($son_versiyon, $mevcut_versiyon, '>')) {
     $guncelleme_var = true;
 }
 
-// Rollback Yedekleri
+// 3. Rollback Yedekleri
 $yedek_dizini = __DIR__ . "/yedekler/";
 $rollback_yedekleri = [];
 if (is_dir($yedek_dizini)) {
