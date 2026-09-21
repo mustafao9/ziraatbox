@@ -1,6 +1,6 @@
 <?php
 /**
- * ZiraatBox - Genel Yardımcı Fonksiyonlar v3.0 (.env & Güvenlik Güncellemesi)
+ * ZiraatBox - Genel Yardımcı Fonksiyonlar v3.1 (Kök Dizin & SEO Güncellemesi)
  * Mustafa Satılmış - Webmaster
  */
 
@@ -10,12 +10,27 @@ if (!function_exists('g')) {
         if (is_array($data)) {
             return array_map('g', $data);
         }
-        // HTML etiketlerini ve kenar boşluklarını temizler (Veritabanı tırnak yapısını bozmaz)
         return trim(strip_tags($data ?? ''));
     }
 }
 
-// 🔗 2. SEO: SEF LINK OLUŞTURUCU
+// 🔗 2. DİNAMİK URL & ASSET ÜRETİCİLERİ
+if (!function_exists('url')) {
+    function url($yol = '') {
+        $cleanPath = ltrim($yol, '/');
+        // Eğer eski ziraatbox/public_html kalıntısı geldiyse temizle
+        $cleanPath = str_replace(['ziraatbox/public_html/', 'public_html/'], '', $cleanPath);
+        return URL . ($cleanPath ? '/' . $cleanPath : '');
+    }
+}
+
+if (!function_exists('asset')) {
+    function asset($yol = '') {
+        return url(ltrim($yol, '/'));
+    }
+}
+
+// 🔗 3. SEO: SEF LINK OLUŞTURUCU
 if (!function_exists('sef_link')) {
     function sef_link($str) {
         $preg = array('Ç', 'Ş', 'Ğ', 'Ü', 'İ', 'Ö', 'ç', 'ş', 'ğ', 'ü', 'ö', 'ı', '+', '#', '.', ',', '(', ')', '[', ']', '{', '}', '?', '&', '=', '!', '"', "'");
@@ -28,7 +43,7 @@ if (!function_exists('sef_link')) {
     }
 }
 
-// 🌳 3. KATEGORİ: SONSUZ HİYERARŞİ FONKSİYONU
+// 🌳 4. KATEGORİ: SONSUZ HİYERARŞİ FONKSİYONU
 if (!function_exists('kategoriListeleAltli')) {
     function kategoriListeleAltli($db, $ust_id = 0, $derinlik = 0, $secili = 0) {
         try {
@@ -44,16 +59,15 @@ if (!function_exists('kategoriListeleAltli')) {
                 
                 echo '<option value="' . (int)$kat['id'] . '" ' . $sel . ' style="' . $stil . '">' . $girinti . $simge . htmlspecialchars($kat['adi']) . '</option>';
                 
-                // Alt kategorileri özyinelemeli (recursive) olarak çağırır
                 kategoriListeleAltli($db, $kat['id'], $derinlik + 1, $secili);
             }
         } catch (PDOException $e) {
-            // Sessiz başarısızlık veya loglama
+            // Sessiz başarısızlık
         }
     }
 }
 
-// 🗺️ 4. NAVİGASYON: SOYAĞACI (BREADCRUMB) OLUŞTURUCU
+// 🗺️ 5. NAVİGASYON: BREADCRUMB OLUŞTURUCU
 if (!function_exists('katYoluGetir')) {
     function katYoluGetir($db, $kat_id) {
         $yol = [];
@@ -64,7 +78,8 @@ if (!function_exists('katYoluGetir')) {
                 $s->execute([$temp_id]);
                 $k = $s->fetch(PDO::FETCH_ASSOC);
                 if ($k) {
-                    array_unshift($yol, '<a href="kategori.php?slug=' . htmlspecialchars($k['slug']) . '" style="color:#27ae60; text-decoration:none; font-weight:700;">' . htmlspecialchars($k['adi']) . '</a>');
+                    $katUrl = url('kategori.php?slug=' . urlencode($k['slug']));
+                    array_unshift($yol, '<a href="' . $katUrl . '" style="color:#27ae60; text-decoration:none; font-weight:700;">' . htmlspecialchars($k['adi']) . '</a>');
                     $temp_id = (int)$k['ust_id'];
                 } else { 
                     break; 
@@ -77,7 +92,7 @@ if (!function_exists('katYoluGetir')) {
     }
 }
 
-// ⚖️ 5. GERÇEK IP YAKALAMA FONKSİYONU (5651 Uyumlu)
+// ⚖️ 6. GERÇEK IP YAKALAMA FONKSİYONU (5651 Uyumlu)
 if (!function_exists('getRealIP')) {
     function getRealIP() {
         if (!empty($_SERVER['HTTP_CLIENT_IP'])) {

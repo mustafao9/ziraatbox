@@ -4,8 +4,12 @@
 !.env.example
 
 # Yüklenen Kullanıcı Dosyaları ve Medyalar
-uploads/
-public_html/uploads/
+uploads/*
+!uploads/.gitkeep
+uploads/ilanlar/*
+!uploads/ilanlar/.gitkeep
+uploads/profil/*
+!uploads/profil/.gitkeep
 
 # IDE, Sistem ve Editör Dosyaları
 .idea/
@@ -13,4 +17,3 @@ public_html/uploads/
 *.swp
 *.DS_Store
 *.log
-public_html/uploads/
