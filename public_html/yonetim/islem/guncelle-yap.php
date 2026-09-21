@@ -1,13 +1,18 @@
 <?php
 /**
- * ZiraatBox - PHP 5.6 ve Tüm Sürümlerle Tam Uyumlu Güncelleme Motoru
+ * ZiraatBox - En Sade ve Kesin Uyumlu Güncelleme Motoru
  */
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 set_time_limit(300);
 ini_set('memory_limit', '256M');
 
-$yedek_dizini = dirname(__FILE__) . "/../yedekler/";
+$aktif_dosya = __FILE__;
+$islem_klasoru = dirname($aktif_dosya);
+$yonetim_klasoru = dirname($islem_klasoru);
+$root_dir = dirname($yonetim_klasoru);
+
+$yedek_dizini =$yonetim_klasoru . "/yedekler/";
 if (!is_dir($yedek_dizini)) {
     mkdir($yedek_dizini, 0755, true);
 }
@@ -15,7 +20,7 @@ if (!is_dir($yedek_dizini)) {
 ini_set('log_errors', '1');
 ini_set('error_log', $yedek_dizini . 'guncelle_hata.log');
 
-$ayar_dosyasi = dirname(dirname(dirname(__FILE__))) . "/sistem/ayar.php";
+$ayar_dosyasi =$root_dir . "/sistem/ayar.php";
 if (file_exists($ayar_dosyasi)) {
     require_once $ayar_dosyasi;
 } else {
@@ -32,8 +37,6 @@ if (!isset($_SESSION['admin_id']) && (!isset($_SESSION['yetki']) \vert{}\vert{}$
 
 $islem = isset($_GET['islem']) ? $_GET['islem'] : '';$yeni_versiyon = isset($_GET['version']) ?$_GET['version'] : '1.0.6';
 $force = isset($_GET['force']) &&$_GET['force'] == 1;
-
-$root_dir = realpath(dirname(dirname(dirname(__FILE__))));
 
 try {
     if ($islem === 'guncelle') {$github_repo = "mustafao9/ziraatbox";
