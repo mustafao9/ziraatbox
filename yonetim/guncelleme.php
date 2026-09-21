@@ -5,17 +5,15 @@ if(!isset($_SESSION['admin_id']) && (!isset($_SESSION['yetki']) || $_SESSION['ye
     header("Location: giris.php"); exit;
 }
 
-// 1. Mevcut Sürüm Tespiti (Garanti ve Dinamik Okuma)
-$v_path = dirname(__DIR__) . "/sistem/versiyon.php";
+// 🛡️ DİNAMİK SÜRÜM TESPİTİ (Hafıza kilitlenmesini ve yol karmaşasını sıfırlar)
+$v_path = __DIR__ . "/../sistem/versiyon.php";
 $mevcut_versiyon = '1.0.0';
 
 if (file_exists($v_path)) {
-    // Önce dosya içeriğini doğrudan okuyoruz ( include_once önbellek çakışmasını önler )
+    // PHP'nin hafızadaki eski tanımına bakmaksızın doğrudan fiziki dosyayı tarar
     $v_content = file_get_contents($v_path);
     if (preg_match("/define\s*\(\s*['\"]SISTEM_VERSIYON['\"]\s*,\s*['\"]([^'\"]+)['\"]\s*\)/i", $v_content, $matches)) {
         $mevcut_versiyon = trim($matches[1]);
-    } else if (defined('SISTEM_VERSIYON')) {
-        $mevcut_versiyon = SISTEM_VERSIYON;
     }
 }
 
