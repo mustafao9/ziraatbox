@@ -1,7 +1,5 @@
 <?php
-/**
- * ZiraatBox - Sistem Versiyon Yapılandırması
- */
-if (!defined('SISTEM_VERSIYON')) {
-    define('SISTEM_VERSIYON', '1.0.2');
-}
+
+$surum = '1.0.13';
+
+$versiyon = $surum;
