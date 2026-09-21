@@ -1,14 +1,24 @@
 <?php 
 require_once "../sistem/ayar.php"; 
 
-if(!isset($_SESSION['admin_id']) || $_SESSION['yetki'] != 'admin'){
+if(!isset($_SESSION['admin_id']) && (!isset($_SESSION['yetki']) || $_SESSION['yetki'] != 'admin')){
     header("Location: giris.php"); exit;
 }
 
+// 1. MEVCUT SÜRÜMÜ BELİRLE
+if (file_exists("../../sistem/versiyon.php")) {
+    include_once "../../sistem/versiyon.php";
+}
 $mevcut_versiyon = defined('SISTEM_VERSIYON') ? SISTEM_VERSIYON : '1.0.0';
 
-// 📡 GITHUB API ILE SON VERSIYON KONTROLÜ
+// 2. GITHUB API ILE SON VERSIYON KONTROLÜ (Releases + Tags Çift Yönlü Kontrol)
 $github_repo = "mustafao9/ziraatbox";
+$guncelleme_var = false;
+$son_versiyon = $mevcut_versiyon;
+$release_notlari = "";
+$zip_url = "";
+
+// A) Önce Latest Release dene
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, "https://api.github.com/repos/$github_repo/releases/latest");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -17,25 +27,43 @@ curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 $response = curl_exec($ch);
 curl_close($ch);
 
-$guncelleme_var = false;
-$son_versiyon = $mevcut_versiyon;
-$release_notlari = "";
-$zip_url = "";
-
 if ($response) {
     $data = json_decode($response, true);
     if (isset($data['tag_name'])) {
         $son_versiyon = ltrim($data['tag_name'], 'v');
         $release_notlari = $data['body'] ?? 'Sürüm notu girilmemiş.';
         $zip_url = $data['zipball_url'] ?? '';
+    }
+}
 
-        if (version_compare($son_versiyon, $mevcut_versiyon, '>')) {
-            $guncelleme_var = true;
+// B) Release yoksa Tags API üzerinden en son etiketi bul
+if ($son_versiyon == $mevcut_versiyon) {
+    $ch_tag = curl_init();
+    curl_setopt($ch_tag, CURLOPT_URL, "https://api.github.com/repos/$github_repo/tags");
+    curl_setopt($ch_tag, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch_tag, CURLOPT_USERAGENT, 'ZiraatBox-AutoUpdater');
+    curl_setopt($ch_tag, CURLOPT_TIMEOUT, 10);
+    $response_tag = curl_exec($ch_tag);
+    curl_close($ch_tag);
+
+    if ($response_tag) {
+        $tags_data = json_decode($response_tag, true);
+        if (is_array($tags_data) && !empty($tags_data[0]['name'])) {
+            $latest_tag_name = ltrim($tags_data[0]['name'], 'v');
+            if (version_compare($latest_tag_name, $son_versiyon, '>=')) {
+                $son_versiyon = $latest_tag_name;
+                $release_notlari = "GitHub Etiketi (Tag): v" . $son_versiyon . " - Son kod güncellemeleri hazır.";
+            }
         }
     }
 }
 
-// OTOMATİK ROLLBACK YEDEKLERİNİ BUL
+// Versiyon karşılaştırma
+if (version_compare($son_versiyon, $mevcut_versiyon, '>')) {
+    $guncelleme_var = true;
+}
+
+// 3. OTOMATİK ROLLBACK YEDEKLERİNİ BUL
 $yedek_dizini = __DIR__ . "/yedekler/";
 $rollback_yedekleri = [];
 if (is_dir($yedek_dizini)) {
@@ -48,13 +76,22 @@ if (is_dir($yedek_dizini)) {
     rsort($rollback_yedekleri); // En yeni üstte
 }
 
-// MESAJ DÜZENLEME
+// 4. BİLDİRİM MESAJLARI
 $mesaj = ""; $mesaj_tur = "";
 if (isset($_GET['durum'])) {
     switch ($_GET['durum']) {
-        case 'guncellendi': $mesaj = "🚀 Tebrikler! Sistem başarıyla v" . htmlspecialchars($_GET['v'] ?? '') . " sürümüne güncellendi ve veritabanı senkronize edildi."; $mesaj_tur = "success"; break;
-        case 'rollback_ok': $mesaj = "🔄 Sistem başarıyla güncelleme öncesi stabil haline geri döndürüldü!"; $mesaj_tur = "warning"; break;
-        case 'hata': $mesaj = "❌ Hata: " . htmlspecialchars($_GET['msg'] ?? 'İşlem başarısız.'); $mesaj_tur = "danger"; break;
+        case 'guncellendi': 
+            $mesaj = "🚀 Tebrikler! Sistem başarıyla v" . htmlspecialchars($_GET['v'] ?? '') . " sürümüne güncellendi ve veritabanı senkronize edildi."; 
+            $mesaj_tur = "success"; 
+            break;
+        case 'rollback_ok': 
+            $mesaj = "🔄 Sistem başarıyla güncelleme öncesi stabil haline geri döndürüldü!"; 
+            $mesaj_tur = "warning"; 
+            break;
+        case 'hata': 
+            $mesaj = "❌ Hata: " . htmlspecialchars($_GET['msg'] ?? 'İşlem başarısız.'); 
+            $mesaj_tur = "danger"; 
+            break;
     }
 }
 ?>
@@ -78,11 +115,13 @@ if (isset($_GET['durum'])) {
         .badge-latest { background: #dcfce7; color: #166534; }
         .badge-new { background: #feebc8; color: #c05621; }
 
-        .btn { padding: 14px 28px; border-radius: 10px; font-weight: 800; text-decoration: none; display: inline-block; cursor: pointer; border: none; font-size: 14px; transition: 0.2s; }
+        .btn { padding: 12px 24px; border-radius: 10px; font-weight: 800; text-decoration: none; display: inline-block; cursor: pointer; border: none; font-size: 14px; transition: 0.2s; }
         .btn-update { background: var(--admin-green); color: white; }
         .btn-update:hover { background: #219653; }
-        .btn-rollback { background: var(--admin-orange); color: white; }
-        .btn-rollback:hover { background: #dd6b20; }
+        .btn-force { background: var(--admin-orange); color: white; }
+        .btn-force:hover { background: #dd6b20; }
+        .btn-rollback { background: var(--admin-red); color: white; }
+        .btn-rollback:hover { background: #c53030; }
 
         .alert { padding: 16px 20px; border-radius: 10px; margin-bottom: 25px; font-weight: 700; font-size: 14px; }
         .alert-success { background: #dcfce7; color: #166534; border-left: 5px solid #22c55e; }
@@ -148,8 +187,13 @@ if (isset($_GET['durum'])) {
                    class="btn btn-update">⚡ ŞİMDİ OTOMATİK GÜNCELLE (v<?php echo $son_versiyon; ?>)</a>
             </div>
         <?php else: ?>
-            <div style="margin-top:20px;">
+            <hr style="border:0; border-top:1px solid #edf2f7; margin:20px 0;">
+            <p style="font-size:13px; color:#718096; margin-bottom:15px;">GitHub üzerindeki en son güncel kodları ve dosyaları zorla çekmek için aşağıdaki butonu kullanabilirsiniz:</p>
+            <div style="display:flex; gap:12px;">
                 <a href="guncelleme.php" class="btn" style="background:#edf2f7; color:#4a5568;">🔄 Yeniden Kontrol Et</a>
+                <a href="islem/guncelle-yap.php?islem=guncelle&version=<?php echo $son_versiyon; ?>&force=1" 
+                   onclick="return confirm('Zorla güncelleme başlatılsın mı? GitHub üzerindeki tüm son kodlar çekilecektir.')" 
+                   class="btn btn-force">⚡ ZORLA GÜNCELLE (Son GitHub Kodlarını Çek)</a>
             </div>
         <?php endif; ?>
     </div>
@@ -173,7 +217,7 @@ if (isset($_GET['durum'])) {
                     <?php foreach ($rollback_yedekleri as $r_dosya): ?>
                         <tr>
                             <td style="padding:12px; border-bottom:1px solid #f1f5f9;">
-                                <b><?php echo $r_dosya; ?></b><br>
+                                <b><?php echo htmlspecialchars($r_dosya); ?></b><br>
                                 <small style="color:#94a3b8;"><?php echo date("d.m.Y H:i", filemtime($yedek_dizini . $r_dosya)); ?></small>
                             </td>
                             <td style="text-align:right; padding:12px; border-bottom:1px solid #f1f5f9;">
