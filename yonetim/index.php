@@ -5,16 +5,12 @@ if(!isset($_SESSION['admin_id']) || $_SESSION['yetki'] != 'admin'){
     header("Location: giris.php"); exit;
 }
 
-// CANLI İSTATİSTİKLER
-$toplam_ilan    = $db->query("SELECT COUNT(*) FROM ilanlar")->fetchColumn();
-$onay_bekleyen  = $db->query("SELECT COUNT(*) FROM ilanlar WHERE durum = 'beklemede'")->fetchColumn();
-$toplam_uye      = $db->query("SELECT COUNT(*) FROM uyeler WHERE yetki = 'uye'")->fetchColumn();
-$yeni_mesaj      = $db->query("SELECT COUNT(*) FROM mesajlar WHERE okundu = 0")->fetchColumn();
-
-// 🚨 ŞİKAYET İSTATİSTİĞİ
-$yeni_sikayet    = $db->query("SELECT COUNT(*) FROM sikayetler WHERE durum = 'beklemede'")->fetchColumn();
-
-$ayarlar = $db->query("SELECT * FROM ayarlar WHERE id = 1")->fetch();
+// CANLI İSTATİSTİKLER (Güvenli PDO Sorguları)
+$toplam_ilan    = $db->query("SELECT COUNT(*) FROM ilanlar")->fetchColumn() ?: 0;
+$onay_bekleyen  = $db->query("SELECT COUNT(*) FROM ilanlar WHERE durum = 'beklemede'")->fetchColumn() ?: 0;
+$toplam_uye      = $db->query("SELECT COUNT(*) FROM uyeler WHERE yetki = 'uye'")->fetchColumn() ?: 0;
+$yeni_mesaj      = $db->query("SELECT COUNT(*) FROM mesajlar WHERE okundu = 0")->fetchColumn() ?: 0;
+$yeni_sikayet    = $db->query("SELECT COUNT(*) FROM sikayetler WHERE durum = 'beklemede'")->fetchColumn() ?: 0;
 
 // SON İLANLAR
 $son_ilanlar = $db->query("SELECT i.*, k.adi as kat_adi, u.ad_soyad 
@@ -23,7 +19,7 @@ $son_ilanlar = $db->query("SELECT i.*, k.adi as kat_adi, u.ad_soyad
                            LEFT JOIN uyeler u ON i.uye_id = u.id 
                            ORDER BY (i.durum = 'beklemede') DESC, i.id DESC LIMIT 5")->fetchAll();
 
-// 🛡️ SON ŞİKAYETLER (LEFT JOIN ile güvenli hale getirildi)
+// 🛡️ SON ŞİKAYETLER
 $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as ilan_baslik 
                               FROM sikayetler s 
                               LEFT JOIN uyeler u ON s.sikayetci_id = u.id 
@@ -132,16 +128,19 @@ $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as i
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach($son_ilanlar as $ilan): ?>
+                    <?php foreach($son_ilanlar as $ilan): 
+                        $baslik = $ilan['baslik'] ?? 'Başlıksız İlan';
+                        $kisa_baslik = mb_strlen($baslik) > 35 ? mb_substr($baslik, 0, 35) . '...' : $baslik;
+                    ?>
                     <tr>
-                        <td><strong><?php echo mb_substr(htmlspecialchars($ilan['baslik']),0,35); ?>...</strong></td>
+                        <td><strong><?php echo htmlspecialchars($kisa_baslik); ?></strong></td>
                         <td><small style="color:#718096; font-weight:600;"><?php echo htmlspecialchars($ilan['kat_adi'] ?? 'Genel'); ?></small></td>
                         <td>
                             <span class="badge <?php echo ($ilan['durum'] == 'beklemede') ? 'badge-pending' : 'badge-active'; ?>">
                                 <?php echo ($ilan['durum'] == 'beklemede') ? 'ONAY BEKLİYOR' : 'YAYINDA'; ?>
                             </span>
                         </td>
-                        <td style="text-align: right;"><a href="ilanlar.php?id=<?php echo $ilan['id']; ?>" style="text-decoration: none;">🔍</a></td>
+                        <td style="text-align: right;"><a href="ilanlar.php?id=<?php echo (int)($ilan['id'] ?? 0); ?>" style="text-decoration: none;">🔍</a></td>
                     </tr>
                     <?php endforeach; ?>
                     <?php if(empty($son_ilanlar)): ?>
@@ -182,7 +181,7 @@ $son_sikayetler = $db->query("SELECT s.*, u.ad_soyad as sikayetci, i.baslik as i
         <div class="quick-action-grid">
             <a href="guncelleme.php" class="action-btn" style="border-color:var(--admin-blue); color:var(--admin-blue);">🚀 Sistem Güncelleme</a>
             <a href="yedekleme.php" class="action-btn">🗄️ Yedekleme Paneli</a>
-            <a href="islem/yedek-al.php?tip=sql" class="action-btn">💾 Hızlı SQL Yedeği</a>
+            <a href="islem/yedek-al.php?tip=sql" onclick="return confirm('SQL Yedeği oluşturulsun mu?')" class="action-btn">💾 Hızlı SQL Yedeği</a>
             <a href="ziyaretciler.php" class="action-btn">📊 Trafik Raporu</a>
             <a href="ayarlar.php" class="action-btn">⚙️ Site Ayarları</a>
         </div>

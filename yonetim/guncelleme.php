@@ -104,15 +104,7 @@ if (isset($_GET['durum'])) {
 </head>
 <body>
 
-<div class="sidebar">
-    <h2 style="color: #48bb78; margin-bottom: 30px;">Ziraat<span style="color: #f39c12;">Box</span></h2>
-    <a href="../index.php" target="_blank" style="display:block; background:#27ae60; color:#fff; text-align:center; padding:10px; border-radius:8px; text-decoration:none; margin-bottom:20px;">🌐 Siteyi Görüntüle</a>
-    <nav>
-        <a href="index.php" style="display:block; color:#cbd5e0; padding:10px; text-decoration:none;">🏠 Panel Özeti</a>
-        <a href="guncelleme.php" style="display:block; color:#fff; background:#2d3748; padding:10px; border-radius:8px; text-decoration:none;">🚀 Sistem Güncelleme</a>
-        <a href="ayarlar.php" style="display:block; color:#cbd5e0; padding:10px; text-decoration:none;">⚙️ Genel Ayarlar</a>
-    </nav>
-</div>
+<?php include "sol_menu.php"; ?>
 
 <div class="content">
     <h1 style="margin: 0 0 30px; color: #1a202c;">🚀 Canlı Sunucu Güncelleme Merkezi</h1>

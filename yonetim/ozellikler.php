@@ -89,21 +89,7 @@ $turler = ['yazi'=>'Kısa Yazı', 'sayi'=>'Sayı', 'ondalik'=>'Ondalık', 'yil'=
 </head>
 <body>
 
-<div class="sidebar">
-    <h2 style="color: #48bb78; margin-bottom: 30px;">Ziraat<span style="color: #f39c12;">Box</span></h2>
-    <a href="../index.php" target="_blank" class="view-site-btn">🌐 Siteyi Görüntüle</a>
-    <nav>
-        <a href="index.php">🏠 Panel Özeti</a>
-        <a href="ilanlar.php">📦 İlan Yönetimi (<b><?php echo $onay_bekleyen; ?></b>)</a>
-        <a href="kategoriler.php">📂 Kategori Yönetimi</a>
-        <a href="ozellikler.php" class="active">🛠️ Özellik Havuzu</a> 
-        <a href="uyeler.php">👥 Üye Yönetimi</a>
-        <a href="mesajlar.php">💬 Mesajlar (<b><?php echo $yeni_mesaj; ?></b>)</a>
-        <a href="ayarlar.php">⚙️ Genel Ayarlar</a>
-        <hr style="border: 0; border-top: 1px solid #2d3748; margin: 20px 0;">
-        <a href="cikis.php" style="color: #fc8181;">🚪 Güvenli Çıkış</a>
-    </nav>
-</div>
+<?php include "sol_menu.php"; ?>
 
 <div class="content">
     <div style="margin-bottom: 35px;">

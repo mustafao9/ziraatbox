@@ -101,19 +101,7 @@ $uyeler = $db->query("SELECT * FROM uyeler ORDER BY id DESC")->fetchAll();
 </head>
 <body>
 
-<div class="sidebar">
-    <h2>Ziraat<span style="color:#f39c12">Box</span></h2>
-    <a href="../index.php" target="_blank" class="view-site-btn">🌐 Siteyi Görüntüle</a>
-    <nav>
-        <a href="index.php">🏠 Panel Özeti</a>
-        <a href="ilanlar.php">📦 İlan Yönetimi (<b><?php echo $onay_bekleyen; ?></b>)</a>
-        <a href="kategoriler.php">📂 Kategori Yönetimi</a>
-        <a href="ozellikler.php">🛠️ Özellik Havuzu</a>
-        <a href="uyeler.php" class="active">👥 Üye Yönetimi</a>
-        <a href="mesajlar.php">💬 Mesajlar (<b><?php echo $yeni_mesaj; ?></b>)</a>
-        <a href="ayarlar.php">⚙️ Genel Ayarlar</a>
-    </nav>
-</div>
+<?php include "sol_menu.php"; ?>
 
 <div class="content">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">

@@ -40,21 +40,7 @@ $yeni_mesaj    = $db->query("SELECT COUNT(*) FROM mesajlar WHERE okundu = 0")->f
 </head>
 <body>
 
-<div class="sidebar">
-    <h2 style="color: #48bb78;">ZiraatBox</h2>
-    <a href="../index.php" target="_blank" class="view-site-btn">🌐 Siteyi Görüntüle</a>
-    <nav>
-        <a href="index.php">🏠 Panel Özeti</a>
-        <a href="ilanlar.php">📦 İlan Yönetimi (<b><?php echo $onay_bekleyen; ?></b>)</a>
-        <a href="kategoriler.php">📂 Kategori Yönetimi</a>
-        <a href="ozellikler.php">🛠️ Özellik Havuzu</a>
-        <a href="uyeler.php">👥 Üye Yönetimi</a>
-        <a href="mesajlar.php">💬 Mesajlar (<b><?php echo $yeni_mesaj; ?></b>)</a>
-        <a href="ayarlar.php" class="active">⚙️ Genel Ayarlar</a>
-        <hr style="border: 0; border-top: 1px solid #2d3748; margin: 20px 0;">
-        <a href="cikis.php" style="color: #fc8181;">🚪 Güvenli Çıkış</a>
-    </nav>
-</div>
+<?php include "sol_menu.php"; ?>
 
 <div class="content">
     <h1 style="margin: 0; font-weight: 800;">⚙️ Sistem Kontrol Merkezi</h1>

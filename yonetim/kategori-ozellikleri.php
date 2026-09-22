@@ -61,10 +61,7 @@ if($secili_kat > 0){
 </head>
 <body>
 
-<div class="sidebar">
-    <h2 style="color: #48bb78;">ZiraatBox</h2>
-    <a href="ozellikler.php" style="color:#fff; text-decoration:none;">⬅️ Özellik Havuzuna Dön</a>
-</div>
+<?php include "sol_menu.php"; ?>
 
 <div class="content">
     <h1>📂 Kategoriye Özellik Ata</h1>

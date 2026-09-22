@@ -43,21 +43,7 @@ $son_kayitlar = $db->query("SELECT * FROM ziyaretler ORDER BY id DESC LIMIT 30")
 </head>
 <body>
 
-<div class="sidebar">
-    <h2 style="color: #48bb78; margin-bottom: 30px;">ZiraatBox</h2>
-    <a href="../index.php" target="_blank" class="view-site-btn">🌐 Siteyi Görüntüle</a>
-    <nav>
-        <a href="index.php">🏠 Panel Özeti</a>
-        <a href="ziyaretciler.php" class="active">📈 Ziyaretçi Analizi</a>
-        <a href="ilanlar.php">📦 İlan Yönetimi</a>
-        <a href="kategoriler.php">📂 Kategori Yönetimi</a>
-        <a href="uyeler.php">👥 Üye Yönetimi</a>
-        <a href="mesajlar.php">💬 Mesajlar</a>
-        <a href="ayarlar.php">⚙️ Genel Ayarlar</a>
-        <hr style="border:0; border-top:1px solid #2d3748; margin:20px 0;">
-        <a href="cikis.php" style="color: #fc8181;">🚪 Güvenli Çıkış</a>
-    </nav>
-</div>
+<?php include "sol_menu.php"; ?>
 
 <div class="content">
     <h1 style="margin: 0 0 5px; color: #1a202c;">📈 Ziyaretçi Analizi</h1>
