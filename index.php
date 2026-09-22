@@ -221,6 +221,15 @@ $kat_haritasi = kategoriHaritasiGetir($db);
             <?php endforeach; ?>
         </div>
 
+        <!-- ⚠️ YASAL UYARI VE TEST BİLDİRİMİ -->
+        <div style="background: #fff8e1; border: 1px solid #ffe082; border-left: 4px solid #f39c12; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; color: #795548; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="font-size: 20px; color: #f39c12;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div style="line-height: 1.4;">
+                <strong style="color: #5d4037; display: block; margin-bottom: 2px;">Sistem Test ve Altyapı Aşaması Bilgilendirmesi</strong>
+                Platformumuz şu anda test ve entegre süreçlerindedir. Sitede yer alan tüm ilanlar ve veriler <strong>örnek (demo) amaçlıdır</strong>. Bu süreçte gerçek ürün satışı, ticari ilan yayını veya para transferi yapılmamaktadır. Yasal mevzuat ve altyapı uyumluluk testlerimiz tamamlanana kadar gösterilen içerikler bağlayıcı değildir.
+            </div>
+        </div>
+
         <form action="ara.php" method="GET" class="plus-smart-search-box">
             <input type="text" name="q" placeholder="Ürün veya ilan no ara..." required>
             <button type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>

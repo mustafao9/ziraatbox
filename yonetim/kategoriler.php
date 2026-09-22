@@ -82,7 +82,7 @@ if(isset($_POST['kategori_kaydet'])){
 // --- SİLME İŞLEMİ ---
 if(isset($_GET['sil'])){
     $sil_id = intval($_GET['sil']);
-    $alt_var_mi = $db->query("SELECT id FROM kategoriler WHERE ust_id = $sil_id LIMIT 1")->fetch();
+    $stmt_alt = $db->prepare("SELECT id FROM kategoriler WHERE ust_id = ? LIMIT 1"); $stmt_alt->execute([(int)$sil_id]); $alt_var_mi = $stmt_alt->fetch();
     if($alt_var_mi){
         header("Location: kategoriler.php?durum=hata_alt_var"); exit;
     }
@@ -96,8 +96,8 @@ $duzenle_veri = ['id'=>0, 'ust_id'=>0, 'adi'=>'', 'ikon'=>'', 'sira'=>0];
 $bagli_ozellikler = [];
 
 if($duzenle_id > 0){
-    $duzenle_veri = $db->query("SELECT * FROM kategoriler WHERE id = $duzenle_id")->fetch();
-    $bagli_ozellikler = $db->query("SELECT ozellik_id FROM kategori_ozellikleri WHERE kategori_id = $duzenle_id")->fetchAll(PDO::FETCH_COLUMN);
+    $stmt_duz = $db->prepare("SELECT * FROM kategoriler WHERE id = ?"); $stmt_duz->execute([(int)$duzenle_id]); $duzenle_veri = $stmt_duz->fetch();
+    $stmt_goz = $db->prepare("SELECT ozellik_id FROM kategori_ozellikleri WHERE kategori_id = ?"); $stmt_goz->execute([(int)$duzenle_id]); $bagli_ozellikler = $stmt_goz->fetchAll(PDO::FETCH_COLUMN);
 }
 
 $ozellik_havuzu = $db->query("SELECT * FROM ozellik_tanimlari ORDER BY ozellik_adi ASC")->fetchAll();

@@ -152,7 +152,13 @@ if (!isset($_SESSION['uye_id'])) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { /* csrf */
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        die('Güvenlik Hatası: Geçersiz CSRF Token!');
+    }
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        die("Güvenlik Hatası: Geçersiz CSRF Token!");
+    }
     // 1. FORM VERİLERİNİ GÜVENLİCE ALALIM
     $uye_id      = (int)$_SESSION['uye_id'];
     $baslik      = trim($_POST['baslik'] ?? '');

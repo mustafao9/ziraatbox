@@ -19,7 +19,10 @@ if (!isset($_SESSION['uye_id'])) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { /* csrf */
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        die('Güvenlik Hatası: Geçersiz CSRF Token!');
+    }
     // Formdan gelen ID ve Üye Bilgisi
     $id          = (int)($_POST['id'] ?? 0);
     $uye_id      = (int)$_SESSION['uye_id'];

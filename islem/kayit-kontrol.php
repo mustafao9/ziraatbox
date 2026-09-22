@@ -9,7 +9,10 @@ require_once __DIR__ . "/../sistem/ayar.php";
 
 $app_url = function_exists('env') ? env('APP_URL', 'http://ziraatbox.com') : 'http://ziraatbox.com';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { /* csrf */
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        die('Güvenlik Hatası: Geçersiz CSRF Token!');
+    }
 
     // 1. RECAPTCHA KONTROLÜ (cURL & .env Destekli)
     $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';

@@ -38,7 +38,7 @@ if(isset($_GET['islem']) && isset($_GET['id'])){
 // Düzenlenecek veriyi çek
 $duzenle_id = isset($_GET['duzenle']) ? intval($_GET['duzenle']) : 0;
 $d_uye = ['id'=>0, 'ad_soyad'=>'', 'email'=>'', 'telefon'=>'', 'yetki'=>'uye', 'durum'=>'aktif'];
-if($duzenle_id > 0) $d_uye = $db->query("SELECT * FROM uyeler WHERE id = $duzenle_id")->fetch();
+if($duzenle_id > 0) { $stmt_u = $db->prepare("SELECT * FROM uyeler WHERE id = ?"); $stmt_u->execute([(int)$duzenle_id]); $d_uye = $stmt_u->fetch(); }
 
 $uyeler = $db->query("SELECT * FROM uyeler ORDER BY id DESC")->fetchAll();
 ?>

@@ -21,7 +21,9 @@ if (!$ip_kontrol->fetch()) {
     $db->prepare("UPDATE ilanlar SET goruntulenme_sayisi = goruntulenme_sayisi + 1 WHERE id = ?")->execute([$id]);
 }
 
-$bugun_izlenme = $db->query("SELECT COUNT(*) FROM ilan_izlenim_log WHERE ilan_id = $id AND izlenme_tarihi = '$bugun'")->fetchColumn();
+$stmt_iz = $db->prepare("SELECT COUNT(*) FROM ilan_izlenim_log WHERE ilan_id = ? AND izlenme_tarihi = ?");
+$stmt_iz->execute([(int)$id, $bugun]);
+$bugun_izlenme = $stmt_iz->fetchColumn();
 
 // 3. İLAN, ÜYE VE KONUM BİLGİLERİNİ ÇEKELİM (SQL Şemasına Tam Uyumlu)
 $sorgu = $db->prepare("SELECT i.*, 
