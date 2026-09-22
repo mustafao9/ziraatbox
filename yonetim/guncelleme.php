@@ -10,9 +10,10 @@ $v_path = __DIR__ . "/../sistem/versiyon.php";
 $mevcut_versiyon = '1.0.0';
 
 if (file_exists($v_path)) {
-    // PHP'nin hafızadaki eski tanımına bakmaksızın doğrudan fiziki dosyayı tarar
+    clearstatcache(true, $v_path);
     $v_content = file_get_contents($v_path);
-    if (preg_match("/define\s*\(\s*['\"]SISTEM_VERSIYON['\"]\s*,\s*['\"]([^'\"]+)['\"]\s*\)/i", $v_content, $matches)) {
+    // Regex: SISTEM_VERSIYON sabiti tek/çift tırnak ve boşluk fark etmeksizin sökülür
+    if (preg_match("/SISTEM_VERSIYON['\"]\s*,\s*['\"]([^'\"]+)['\"]/i", $v_content, $matches)) {
         $mevcut_versiyon = trim($matches[1]);
     }
 }
@@ -20,7 +21,7 @@ if (file_exists($v_path)) {
 $github_repo = "mustafao9/ziraatbox";
 $guncelleme_var = false;
 $son_versiyon = $mevcut_versiyon;
-$release_notlari = "";
+$release_notlari = "GitHub bağlantısı kuruluyor...";
 
 // 2. GitHub Tags API Kontrolü
 $ch_tag = curl_init();
@@ -85,16 +86,17 @@ if (isset($_GET['durum'])) {
     <style>
         :root { --admin-dark: #1a202c; --admin-green: #27ae60; --admin-orange: #ed8936; --admin-red: #e53e3e; }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; }
-        .sidebar { width: 260px; background: var(--admin-dark); color: #fff; min-height: 100vh; padding: 20px; box-sizing: border-box; }
         .content { flex: 1; padding: 30px; box-sizing: border-box; }
         .card { background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .version-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-weight: 800; font-size: 13px; }
         .badge-current { background: #e2e8f0; color: #2d3748; }
         .badge-latest { background: #dcfce7; color: #166534; }
         .badge-new { background: #feebc8; color: #c05621; }
-        .btn { padding: 12px 24px; border-radius: 10px; font-weight: 800; text-decoration: none; display: inline-block; cursor: pointer; border: none; font-size: 14px; }
+        .btn { padding: 12px 24px; border-radius: 10px; font-weight: 800; text-decoration: none; display: inline-block; cursor: pointer; border: none; font-size: 14px; transition: 0.2s; }
         .btn-update { background: var(--admin-green); color: white; }
+        .btn-update:hover { background: #219150; }
         .btn-force { background: var(--admin-orange); color: white; }
+        .btn-force:hover { background: #dd6b20; }
         .alert { padding: 16px 20px; border-radius: 10px; margin-bottom: 25px; font-weight: 700; font-size: 14px; }
         .alert-success { background: #dcfce7; color: #166534; }
         .alert-warning { background: #fef3c7; color: #92400e; }
@@ -116,14 +118,14 @@ if (isset($_GET['durum'])) {
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <h2 style="margin:0 0 10px; color:#2d3748;">Mevcut Sürüm: <span class="version-badge badge-current">v<?php echo $mevcut_versiyon; ?></span></h2>
-                <p style="margin:0; color:#718096; font-size:14px;">GitHub Deposu: <b><?php echo $github_repo; ?></b></p>
+                <h2 style="margin:0 0 10px; color:#2d3748;">Mevcut Sürüm: <span class="version-badge badge-current">v<?php echo htmlspecialchars($mevcut_versiyon); ?></span></h2>
+                <p style="margin:0; color:#718096; font-size:14px;">GitHub Deposu: <b><?php echo htmlspecialchars($github_repo); ?></b></p>
             </div>
             <div>
                 <?php if ($guncelleme_var): ?>
-                    <span class="version-badge badge-new">Yeni Sürüm Mevcut: v<?php echo $son_versiyon; ?></span>
+                    <span class="version-badge badge-new">Yeni Sürüm Mevcut: v<?php echo htmlspecialchars($son_versiyon); ?></span>
                 <?php else: ?>
-                    <span class="version-badge badge-latest">✅ Sisteminiz Güncel (v<?php echo $son_versiyon; ?>)</span>
+                    <span class="version-badge badge-latest">✅ Sisteminiz Güncel (v<?php echo htmlspecialchars($son_versiyon); ?>)</span>
                 <?php endif; ?>
             </div>
         </div>
@@ -132,11 +134,11 @@ if (isset($_GET['durum'])) {
         <div class="notes-box"><?php echo htmlspecialchars($release_notlari); ?></div>
 
         <div style="display:flex; gap:12px; margin-top:20px;">
-            <a href="islem/guncelle-yap.php?islem=guncelle&version=<?php echo $son_versiyon; ?>" 
+            <a href="islem/guncelle-yap.php?islem=guncelle&version=<?php echo urlencode($son_versiyon); ?>" 
                onclick="return confirm('Güncelleme başlatılsın mı?')" 
-               class="btn btn-update">⚡ GÜNCELLEMEYİ BAŞLAT (v<?php echo $son_versiyon; ?>)</a>
+               class="btn btn-update">⚡ GÜNCELLEMEYİ BAŞLAT (v<?php echo htmlspecialchars($son_versiyon); ?>)</a>
 
-            <a href="islem/guncelle-yap.php?islem=guncelle&version=<?php echo $son_versiyon; ?>&force=1" 
+            <a href="islem/guncelle-yap.php?islem=guncelle&version=<?php echo urlencode($son_versiyon); ?>&force=1" 
                onclick="return confirm('Zorla güncelleme yapılsın mı?')" 
                class="btn btn-force">🔄 ZORLA GÜNCELLE (Main Branch Çek)</a>
         </div>
