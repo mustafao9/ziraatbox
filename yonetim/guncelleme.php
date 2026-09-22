@@ -5,16 +5,31 @@ if(!isset($_SESSION['admin_id']) && (!isset($_SESSION['yetki']) || $_SESSION['ye
     header("Location: giris.php"); exit;
 }
 
-// 🛡️ DİNAMİK SÜRÜM TESPİTİ (Hafıza kilitlenmesini ve yol karmaşasını sıfırlar)
-$v_path = __DIR__ . "/../sistem/versiyon.php";
+// 🛡️ DİNAMİK SÜRÜM TESPİTİ (Önce Veritabanı, Yedek Olarak Dosya)
 $mevcut_versiyon = '1.0.0';
 
-if (file_exists($v_path)) {
-    clearstatcache(true, $v_path);
-    $v_content = file_get_contents($v_path);
-    // Regex: SISTEM_VERSIYON sabiti tek/çift tırnak ve boşluk fark etmeksizin sökülür
-    if (preg_match("/SISTEM_VERSIYON['\"]\s*,\s*['\"]([^'\"]+)['\"]/i", $v_content, $matches)) {
-        $mevcut_versiyon = trim($matches[1]);
+// 1. AŞAMA: Veritabanından (ayarlar tablosu sistem_versiyon kolonu) Oku
+try {
+    $stmt = $db->query("SELECT sistem_versiyon FROM ayarlar WHERE id = 1 LIMIT 1");
+    if ($stmt) {
+        $db_v = $stmt->fetchColumn();
+        if (!empty($db_v)) { 
+            $mevcut_versiyon = trim($db_v); 
+        }
+    }
+} catch (Exception $e) {
+    // Veritabanında kolon henüz yoksa varsayılan devam eder
+}
+
+// 2. AŞAMA: Veritabanında Yoksa / Okunamadıysa Fiziki Dosyayı Tara
+if ($mevcut_versiyon == '1.0.0') {
+    $v_path = __DIR__ . "/../sistem/versiyon.php";
+    if (file_exists($v_path)) {
+        clearstatcache(true, $v_path);
+        $v_content = file_get_contents($v_path);
+        if (preg_match("/SISTEM_VERSIYON['\"]\s*,\s*['\"]([^'\"]+)['\"]/i", $v_content, $matches)) {
+            $mevcut_versiyon = trim($matches[1]);
+        }
     }
 }
 

@@ -1686,7 +1686,17 @@ try {
         '../guncelleme.php?durum=basarili&version=' .
         urlencode($versiyon);
 
-    header(
+    
+// 🚀 OTOMATİK VERİTABANI MİGRASYONU
+$sql_dosyasi = __DIR__ . "/../../sistem/guncelleme.sql";
+if (file_exists($sql_dosyasi)) {
+    $sql_icerik = file_get_contents($sql_dosyasi);
+    if (!empty(trim($sql_icerik))) {
+        try { $db->exec($sql_icerik); } catch (PDOException $e) { error_log("SQL Error: " . $e->getMessage()); }
+    }
+}
+
+header(
         'Location: ' .
         $redirect
     );
