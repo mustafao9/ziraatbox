@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 /**
  * ============================================================
@@ -1376,7 +1378,9 @@ try {
        -------------------------------------------------------- */
     $hedef_versiyon = $_GET['version'] ?? $version ?? '1.0.18';
     $v_dosya_yolu = dirname(__DIR__, 2) . "/sistem/versiyon.php";
-    $v_icerik = "<?php\n/**\n * ZiraatBox - Otomatik Sürüm Dosyası\n */\ndefine('SISTEM_VERSIYON', '{$hedef_versiyon}');\n";
+    $v_icerik = "<?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);\n/**\n * ZiraatBox - Otomatik Sürüm Dosyası\n */\ndefine('SISTEM_VERSIYON', '{$hedef_versiyon}');\n";
     file_put_contents($v_dosya_yolu, $v_icerik);
 
     update_log(
@@ -1578,7 +1582,9 @@ try {
 
 
     $versionContent =
-        "<?php\n" .
+        "<?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);\n" .
         "\n" .
         "\$surum = " .
         var_export(
@@ -1884,4 +1890,19 @@ header(
     echo '</html>';
 
     exit;
+}
+
+// 🚀 GARANTİ SQL MİGRATION VE DİZİN ÇIKARMA (cPanel Uyumlu)
+$root_path = realpath(__DIR__ . "/../../");
+if (!$root_path) { $root_path = $_SERVER['DOCUMENT_ROOT']; }
+$sql_dosyasi = $root_path . "/sistem/guncelleme.sql";
+if (file_exists($sql_dosyasi)) {
+    $sql_icerik = file_get_contents($sql_dosyasi);
+    if (!empty(trim($sql_icerik)) && isset($db)) {
+        try {
+            $db->exec($sql_icerik);
+        } catch (Exception $e) {
+            error_log("SQL Migration Hatasi: " . $e->getMessage());
+        }
+    }
 }
